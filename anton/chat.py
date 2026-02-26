@@ -89,6 +89,42 @@ class ChatSession:
     def history(self) -> list[dict]:
         return self._history
 
+    def repair_history(self) -> None:
+        """Fix dangling tool_use blocks left by mid-stream cancellation.
+
+        The Anthropic API requires every tool_use to be followed by a
+        tool_result.  If we cancelled mid-turn, the last assistant message
+        may contain tool_use blocks with no corresponding tool_result in
+        the next message.  Append synthetic tool_results so the
+        conversation can continue.
+        """
+        if not self._history:
+            return
+        last = self._history[-1]
+        if last.get("role") != "assistant":
+            return
+        content = last.get("content")
+        if not isinstance(content, list):
+            return
+        tool_ids = [
+            block["id"]
+            for block in content
+            if isinstance(block, dict) and block.get("type") == "tool_use"
+        ]
+        if not tool_ids:
+            return
+        self._history.append({
+            "role": "user",
+            "content": [
+                {
+                    "type": "tool_result",
+                    "tool_use_id": tid,
+                    "content": "Cancelled by user.",
+                }
+                for tid in tool_ids
+            ],
+        })
+
     def _build_minds_context(self) -> str:
         """Build the minds_context block for the system prompt."""
         if self._workspace is None:
@@ -1232,6 +1268,7 @@ async def _chat_loop(console: Console, settings: AntonSettings) -> None:
                 )
             except KeyboardInterrupt:
                 display.abort()
+                session.repair_history()
                 console.print()
                 console.print("[anton.muted]Cancelled.[/]")
                 console.print()
