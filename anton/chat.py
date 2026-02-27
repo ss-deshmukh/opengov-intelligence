@@ -1396,7 +1396,7 @@ async def _chat_loop(console: Console, settings: AntonSettings) -> None:
     display = StreamDisplay(console, toolbar=toolbar)
 
     from prompt_toolkit import PromptSession
-    from prompt_toolkit.formatted_text import ANSI, HTML
+    from prompt_toolkit.formatted_text import HTML
     from prompt_toolkit.styles import Style as PTStyle
 
     def _bottom_toolbar():
@@ -1404,7 +1404,10 @@ async def _chat_loop(console: Console, settings: AntonSettings) -> None:
         status = toolbar["status"]
         if not stats and not status:
             return ""
-        width = os.get_terminal_size().columns
+        try:
+            width = os.get_terminal_size().columns
+        except OSError:
+            width = 80
         gap = width - len(status) - len(stats)
         if gap < 1:
             gap = 1
@@ -1453,7 +1456,9 @@ async def _chat_loop(console: Console, settings: AntonSettings) -> None:
                 console.print()
 
             try:
-                user_input = await prompt_session.prompt_async(ANSI("\033[1;38;2;0;255;159myou>\033[0m "))
+                user_input = await prompt_session.prompt_async(
+                    [("bold fg:#00ff9f", "you>"), ("", " ")]
+                )
             except EOFError:
                 break
 
