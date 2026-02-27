@@ -1233,6 +1233,8 @@ class _EscapeWatcher:
 
     @staticmethod
     def _drain_stdin() -> None:
+        if sys.platform == "win32":
+            return
         import fcntl
 
         fd = sys.stdin.fileno()
@@ -1249,6 +1251,8 @@ class _EscapeWatcher:
             fcntl.fcntl(fd, fcntl.F_SETFL, flags)
 
     async def _watch(self) -> None:
+        if sys.platform == "win32":
+            return
         import select
         import termios
         import tty
