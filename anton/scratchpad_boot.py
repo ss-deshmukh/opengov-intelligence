@@ -447,6 +447,7 @@ while True:
 
     sys.stdout = out_buf
     sys.stderr = err_buf
+    _auto_installed = []
     try:
         compiled = compile(code, "<scratchpad>", "exec")
         exec(compiled, namespace)
@@ -479,6 +480,7 @@ while True:
             sys.stdout = out_buf
             sys.stderr = err_buf
             if _pip.returncode == 0:
+                _auto_installed.append(_missing)
                 try:
                     exec(compiled, namespace)
                 except Exception:
@@ -503,6 +505,8 @@ while True:
         "logs": log_buf.getvalue(),
         "error": error,
     }
+    if _auto_installed:
+        result["auto_installed"] = _auto_installed
     _real_stdout.write(_RESULT_START + "\n")
     _real_stdout.write(json.dumps(result) + "\n")
     _real_stdout.write(_RESULT_END + "\n")

@@ -20,7 +20,9 @@ from anton.clipboard import (
 )
 from anton.llm.prompts import CHAT_SYSTEM_PROMPT
 from anton.llm.provider import (
+    ContextOverflowError,
     StreamComplete,
+    StreamContextCompacted,
     StreamEvent,
     StreamTaskProgress,
     StreamTextDelta,
@@ -48,6 +50,7 @@ if TYPE_CHECKING:
 
 
 _MAX_TOOL_ROUNDS = 25  # Hard limit on consecutive tool-call rounds per turn
+_CONTEXT_PRESSURE_THRESHOLD = 0.7  # Trigger compaction when context is 70% full
 _MAX_CONSECUTIVE_ERRORS = 5  # Stop if the same tool fails this many times in a row
 _RESILIENCE_NUDGE_AT = 2  # Inject resilience nudge after this many consecutive errors
 _RESILIENCE_NUDGE = (
@@ -179,17 +182,105 @@ class ChatSession:
         """Clean up scratchpads and other resources."""
         await self._scratchpads.close_all()
 
+    async def _summarize_history(self) -> None:
+        """Compress old conversation turns into a summary using the coding model.
+
+        Splits history into old (first 60%) and recent (last 40%), keeping at
+        least 4 recent turns.  The old portion is summarized by the fast coding
+        model and replaced with a single user message.
+        """
+        if len(self._history) < 6:
+            return  # Too short to summarize
+
+        min_recent = 4
+        split = max(int(len(self._history) * 0.6), 1)
+        # Ensure we keep at least min_recent turns
+        split = min(split, len(self._history) - min_recent)
+        if split < 2:
+            return
+
+        old_turns = self._history[:split]
+        recent_turns = self._history[split:]
+
+        # Serialize old turns into text for summarization
+        lines: list[str] = []
+        for msg in old_turns:
+            role = msg.get("role", "unknown")
+            content = msg.get("content", "")
+            if isinstance(content, str):
+                lines.append(f"[{role}]: {content[:2000]}")
+            elif isinstance(content, list):
+                for block in content:
+                    if isinstance(block, dict):
+                        if block.get("type") == "text":
+                            lines.append(f"[{role}]: {block['text'][:1000]}")
+                        elif block.get("type") == "tool_use":
+                            lines.append(f"[{role}/tool_use]: {block.get('name', '')}({str(block.get('input', ''))[:500]})")
+                        elif block.get("type") == "tool_result":
+                            lines.append(f"[tool_result]: {str(block.get('content', ''))[:500]}")
+
+        old_text = "\n".join(lines)
+        # Cap at ~8000 chars to avoid overloading the summarizer
+        if len(old_text) > 8000:
+            old_text = old_text[:8000] + "\n... (truncated)"
+
+        try:
+            summary_response = await self._llm.code(
+                system=(
+                    "Summarize this conversation history concisely. Preserve:\n"
+                    "- Key decisions and conclusions\n"
+                    "- Important data/results discovered\n"
+                    "- Variable names and values that are still relevant\n"
+                    "- Errors encountered and how they were resolved\n"
+                    "Keep it under 2000 tokens. Use bullet points."
+                ),
+                messages=[{"role": "user", "content": old_text}],
+                max_tokens=2048,
+            )
+            summary = summary_response.content or "(summary unavailable)"
+        except Exception:
+            # If summarization fails, just do a simple truncation
+            summary = f"(Earlier conversation with {len(old_turns)} turns — summarization failed)"
+
+        summary_msg = {
+            "role": "user",
+            "content": f"[Context summary of earlier conversation]\n{summary}",
+        }
+        self._history = [summary_msg] + recent_turns
+
+    def _compact_scratchpads(self) -> bool:
+        """Compact all active scratchpads. Returns True if any were compacted."""
+        compacted = False
+        for pad in self._scratchpads._pads.values():
+            if pad._compact_cells():
+                compacted = True
+        return compacted
+
     async def turn(self, user_input: str | list[dict]) -> str:
         self._history.append({"role": "user", "content": user_input})
 
         system = self._build_system_prompt()
         tools = self._build_tools()
 
-        response = await self._llm.plan(
-            system=system,
-            messages=self._history,
-            tools=tools,
-        )
+        try:
+            response = await self._llm.plan(
+                system=system,
+                messages=self._history,
+                tools=tools,
+            )
+        except ContextOverflowError:
+            await self._summarize_history()
+            self._compact_scratchpads()
+            response = await self._llm.plan(
+                system=system,
+                messages=self._history,
+                tools=tools,
+            )
+
+        # Proactive compaction
+        if response.usage.context_pressure > _CONTEXT_PRESSURE_THRESHOLD:
+            await self._summarize_history()
+            self._compact_scratchpads()
 
         # Handle tool calls
         tool_round = 0
@@ -248,11 +339,25 @@ class ChatSession:
             self._history.append({"role": "user", "content": tool_results})
 
             # Get follow-up from LLM
-            response = await self._llm.plan(
-                system=system,
-                messages=self._history,
-                tools=tools,
-            )
+            try:
+                response = await self._llm.plan(
+                    system=system,
+                    messages=self._history,
+                    tools=tools,
+                )
+            except ContextOverflowError:
+                await self._summarize_history()
+                self._compact_scratchpads()
+                response = await self._llm.plan(
+                    system=system,
+                    messages=self._history,
+                    tools=tools,
+                )
+
+            # Proactive compaction during tool loop
+            if response.usage.context_pressure > _CONTEXT_PRESSURE_THRESHOLD:
+                await self._summarize_history()
+                self._compact_scratchpads()
 
         # Text-only response
         reply = response.content or ""
@@ -273,19 +378,42 @@ class ChatSession:
 
         response: StreamComplete | None = None
 
-        async for event in self._llm.plan_stream(
-            system=system,
-            messages=self._history,
-            tools=tools,
-        ):
-            yield event
-            if isinstance(event, StreamComplete):
-                response = event
+        try:
+            async for event in self._llm.plan_stream(
+                system=system,
+                messages=self._history,
+                tools=tools,
+            ):
+                yield event
+                if isinstance(event, StreamComplete):
+                    response = event
+        except ContextOverflowError:
+            await self._summarize_history()
+            self._compact_scratchpads()
+            yield StreamContextCompacted(
+                message="Context was getting long — older history has been summarized."
+            )
+            async for event in self._llm.plan_stream(
+                system=system,
+                messages=self._history,
+                tools=tools,
+            ):
+                yield event
+                if isinstance(event, StreamComplete):
+                    response = event
 
         if response is None:
             return
 
         llm_response = response.response
+
+        # Proactive compaction
+        if llm_response.usage.context_pressure > _CONTEXT_PRESSURE_THRESHOLD:
+            await self._summarize_history()
+            self._compact_scratchpads()
+            yield StreamContextCompacted(
+                message="Context was getting long — older history has been summarized."
+            )
 
         # Tool-call loop with circuit breaker
         tool_round = 0
@@ -376,18 +504,41 @@ class ChatSession:
 
             # Stream follow-up
             response = None
-            async for event in self._llm.plan_stream(
-                system=system,
-                messages=self._history,
-                tools=tools,
-            ):
-                yield event
-                if isinstance(event, StreamComplete):
-                    response = event
+            try:
+                async for event in self._llm.plan_stream(
+                    system=system,
+                    messages=self._history,
+                    tools=tools,
+                ):
+                    yield event
+                    if isinstance(event, StreamComplete):
+                        response = event
+            except ContextOverflowError:
+                await self._summarize_history()
+                self._compact_scratchpads()
+                yield StreamContextCompacted(
+                    message="Context was getting long — older history has been summarized."
+                )
+                async for event in self._llm.plan_stream(
+                    system=system,
+                    messages=self._history,
+                    tools=tools,
+                ):
+                    yield event
+                    if isinstance(event, StreamComplete):
+                        response = event
 
             if response is None:
                 return
             llm_response = response.response
+
+            # Proactive compaction during tool loop
+            if llm_response.usage.context_pressure > _CONTEXT_PRESSURE_THRESHOLD:
+                await self._summarize_history()
+                self._compact_scratchpads()
+                yield StreamContextCompacted(
+                    message="Context was getting long — older history has been summarized."
+                )
 
         # Text-only final response — append to history
         reply = llm_response.content or ""
@@ -995,6 +1146,8 @@ async def _chat_loop(console: Console, settings: AntonSettings) -> None:
                             display.update_progress(
                                 event.phase, event.message, event.eta_seconds
                             )
+                        elif isinstance(event, StreamContextCompacted):
+                            display.show_context_compacted(event.message)
                         elif isinstance(event, StreamComplete):
                             total_input += event.response.usage.input_tokens
                             total_output += event.response.usage.output_tokens

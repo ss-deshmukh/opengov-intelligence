@@ -6,6 +6,7 @@ from collections.abc import AsyncIterator
 import openai
 
 from anton.llm.provider import (
+    ContextOverflowError,
     LLMProvider,
     LLMResponse,
     StreamComplete,
@@ -16,6 +17,7 @@ from anton.llm.provider import (
     StreamToolUseStart,
     ToolCall,
     Usage,
+    compute_context_pressure,
 )
 
 
@@ -193,7 +195,14 @@ class OpenAIProvider(LLMProvider):
         if tool_choice:
             kwargs["tool_choice"] = _translate_tool_choice(tool_choice)
 
-        response = await self._client.chat.completions.create(**kwargs)
+        try:
+            response = await self._client.chat.completions.create(**kwargs)
+        except openai.BadRequestError as exc:
+            msg = str(exc).lower()
+            if "context_length_exceeded" in msg or "maximum context length" in msg:
+                raise ContextOverflowError(str(exc)) from exc
+            raise
+
         choice = response.choices[0]
         message = choice.message
 
@@ -211,12 +220,14 @@ class OpenAIProvider(LLMProvider):
                 )
 
         usage_obj = response.usage
+        input_tokens = usage_obj.prompt_tokens if usage_obj else 0
         return LLMResponse(
             content=content_text,
             tool_calls=tool_calls,
             usage=Usage(
-                input_tokens=usage_obj.prompt_tokens if usage_obj else 0,
+                input_tokens=input_tokens,
                 output_tokens=usage_obj.completion_tokens if usage_obj else 0,
+                context_pressure=compute_context_pressure(model, input_tokens),
             ),
             stop_reason=choice.finish_reason,
         )
@@ -251,56 +262,62 @@ class OpenAIProvider(LLMProvider):
         # Track tool call deltas by index
         tc_state: dict[int, dict] = {}
 
-        stream = await self._client.chat.completions.create(**kwargs)
-        async for chunk in stream:
-            if chunk.usage:
-                input_tokens = chunk.usage.prompt_tokens
-                output_tokens = chunk.usage.completion_tokens
+        try:
+            stream = await self._client.chat.completions.create(**kwargs)
+            async for chunk in stream:
+                if chunk.usage:
+                    input_tokens = chunk.usage.prompt_tokens
+                    output_tokens = chunk.usage.completion_tokens
 
-            if not chunk.choices:
-                continue
+                if not chunk.choices:
+                    continue
 
-            delta = chunk.choices[0].delta
-            finish = chunk.choices[0].finish_reason
+                delta = chunk.choices[0].delta
+                finish = chunk.choices[0].finish_reason
 
-            if finish:
-                stop_reason = finish
+                if finish:
+                    stop_reason = finish
 
-            # Text content
-            if delta.content:
-                content_text += delta.content
-                yield StreamTextDelta(text=delta.content)
+                # Text content
+                if delta.content:
+                    content_text += delta.content
+                    yield StreamTextDelta(text=delta.content)
 
-            # Tool call deltas
-            if delta.tool_calls:
-                for tc_delta in delta.tool_calls:
-                    idx = tc_delta.index
-                    if idx not in tc_state:
-                        # New tool call
-                        tc_state[idx] = {
-                            "id": tc_delta.id or "",
-                            "name": tc_delta.function.name if tc_delta.function and tc_delta.function.name else "",
-                            "args_parts": [],
-                        }
-                        if tc_state[idx]["id"] and tc_state[idx]["name"]:
-                            yield StreamToolUseStart(
+                # Tool call deltas
+                if delta.tool_calls:
+                    for tc_delta in delta.tool_calls:
+                        idx = tc_delta.index
+                        if idx not in tc_state:
+                            # New tool call
+                            tc_state[idx] = {
+                                "id": tc_delta.id or "",
+                                "name": tc_delta.function.name if tc_delta.function and tc_delta.function.name else "",
+                                "args_parts": [],
+                            }
+                            if tc_state[idx]["id"] and tc_state[idx]["name"]:
+                                yield StreamToolUseStart(
+                                    id=tc_state[idx]["id"],
+                                    name=tc_state[idx]["name"],
+                                )
+                        else:
+                            # Update id/name if provided in later chunks
+                            if tc_delta.id:
+                                tc_state[idx]["id"] = tc_delta.id
+                            if tc_delta.function and tc_delta.function.name:
+                                tc_state[idx]["name"] = tc_delta.function.name
+
+                        # Accumulate argument fragments
+                        if tc_delta.function and tc_delta.function.arguments:
+                            tc_state[idx]["args_parts"].append(tc_delta.function.arguments)
+                            yield StreamToolUseDelta(
                                 id=tc_state[idx]["id"],
-                                name=tc_state[idx]["name"],
+                                json_delta=tc_delta.function.arguments,
                             )
-                    else:
-                        # Update id/name if provided in later chunks
-                        if tc_delta.id:
-                            tc_state[idx]["id"] = tc_delta.id
-                        if tc_delta.function and tc_delta.function.name:
-                            tc_state[idx]["name"] = tc_delta.function.name
-
-                    # Accumulate argument fragments
-                    if tc_delta.function and tc_delta.function.arguments:
-                        tc_state[idx]["args_parts"].append(tc_delta.function.arguments)
-                        yield StreamToolUseDelta(
-                            id=tc_state[idx]["id"],
-                            json_delta=tc_delta.function.arguments,
-                        )
+        except openai.BadRequestError as exc:
+            msg = str(exc).lower()
+            if "context_length_exceeded" in msg or "maximum context length" in msg:
+                raise ContextOverflowError(str(exc)) from exc
+            raise
 
         # Finalize tool calls
         for idx in sorted(tc_state):
@@ -314,7 +331,11 @@ class OpenAIProvider(LLMProvider):
             response=LLMResponse(
                 content=content_text,
                 tool_calls=tool_calls,
-                usage=Usage(input_tokens=input_tokens, output_tokens=output_tokens),
+                usage=Usage(
+                    input_tokens=input_tokens,
+                    output_tokens=output_tokens,
+                    context_pressure=compute_context_pressure(model, input_tokens),
+                ),
                 stop_reason=stop_reason,
             )
         )

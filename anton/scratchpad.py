@@ -17,6 +17,7 @@ _CELL_INACTIVITY_TIMEOUT = 30      # Max silence between output lines before kil
 _INSTALL_TIMEOUT = 120
 _MAX_OUTPUT = 10_000
 _PROGRESS_MARKER = "__ANTON_PROGRESS__"
+_KEEP_RECENT = 5  # Number of recent cells to keep during compaction
 
 
 def _compute_timeouts(estimated_seconds: int) -> tuple[float, float]:
@@ -463,6 +464,10 @@ class Scratchpad:
         if result_data is None:
             result_data = {"stdout": "", "stderr": "", "error": "Process exited unexpectedly."}
 
+        # Track packages that the subprocess auto-installed on ModuleNotFoundError
+        for pkg in result_data.get("auto_installed") or []:
+            self._installed_packages.add(pkg.lower())
+
         cell = Cell(
             code=code,
             stdout=result_data.get("stdout", ""),
@@ -632,6 +637,44 @@ class Scratchpad:
                 parts.append("---")
 
         return "\n".join(parts)
+
+    def _compact_cells(self) -> bool:
+        """Collapse old cells into a single summary cell to reduce context size.
+
+        Keeps the most recent _KEEP_RECENT cells intact.  Older cells are
+        replaced by one summary cell with a one-line-per-cell digest.
+
+        Returns True if compaction actually happened.
+        """
+        if len(self.cells) <= _KEEP_RECENT + 1:
+            return False
+
+        to_compact = self.cells[: -_KEEP_RECENT]
+        recent = self.cells[-_KEEP_RECENT:]
+
+        summary_lines: list[str] = []
+        for i, cell in enumerate(to_compact, 1):
+            status = "error" if cell.error else "ok"
+            desc = cell.description or f"Cell {i}"
+            first_line = ""
+            output = cell.stdout or cell.error or ""
+            if output:
+                first_line = output.strip().split("\n")[0][:120]
+            summary_lines.append(f"  [{status}] {desc}: {first_line}")
+
+        summary_text = (
+            f"# Compacted {len(to_compact)} earlier cells:\n"
+            + "\n".join(summary_lines)
+        )
+        summary_cell = Cell(
+            code="# (compacted — see summary above)",
+            stdout=summary_text,
+            stderr="",
+            error=None,
+            description=f"Summary of cells 1–{len(to_compact)}",
+        )
+        self.cells = [summary_cell] + recent
+        return True
 
     async def _stop_process(self) -> None:
         """Kill the subprocess and delete the boot script, but keep the venv."""

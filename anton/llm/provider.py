@@ -17,6 +17,7 @@ class ToolCall:
 class Usage:
     input_tokens: int = 0
     output_tokens: int = 0
+    context_pressure: float = 0.0
 
 
 @dataclass
@@ -70,6 +71,12 @@ class StreamToolResult:
     content: str
 
 
+@dataclass
+class StreamContextCompacted:
+    """Notification that context was compacted to free up space."""
+    message: str
+
+
 StreamEvent = (
     StreamTextDelta
     | StreamToolUseStart
@@ -78,7 +85,52 @@ StreamEvent = (
     | StreamComplete
     | StreamTaskProgress
     | StreamToolResult
+    | StreamContextCompacted
 )
+
+
+# --- Context window lookup ---
+
+_CONTEXT_WINDOWS: list[tuple[str, int]] = [
+    # Anton defaults (exact model IDs first)
+    ("claude-sonnet-4-6", 200_000),
+    ("claude-haiku-4-5-20251001", 200_000),
+    # Claude families
+    ("claude-opus-4", 200_000),
+    ("claude-sonnet-4", 200_000),
+    ("claude-haiku-4", 200_000),
+    ("claude-3", 200_000),
+    ("claude-", 200_000),
+    # OpenAI families
+    ("gpt-5", 400_000),
+    ("gpt-4.1", 1_000_000),
+    ("gpt-4o", 128_000),
+    ("gpt-4", 128_000),
+    ("o3", 200_000),
+    ("o1", 200_000),
+]
+_DEFAULT_CONTEXT_WINDOW = 128_000
+
+
+def compute_context_pressure(model: str, input_tokens: int) -> float:
+    """Return input_tokens / context_window as a 0.0–1.0 float."""
+    window = _DEFAULT_CONTEXT_WINDOW
+    for prefix, size in _CONTEXT_WINDOWS:
+        if model.startswith(prefix):
+            window = size
+            break
+    return min(input_tokens / window, 1.0)
+
+
+# --- Exceptions ---
+
+class ContextOverflowError(Exception):
+    """Raised when the LLM rejects a request due to context length exceeded."""
+
+    def __init__(self, message: str, input_tokens: int = 0, limit: int = 0):
+        super().__init__(message)
+        self.input_tokens = input_tokens
+        self.limit = limit
 
 
 class LLMProvider(ABC):

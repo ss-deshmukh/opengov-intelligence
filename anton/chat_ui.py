@@ -276,6 +276,16 @@ class StreamDisplay:
             self._live.stop()
             self._live = None
 
+    def show_context_compacted(self, message: str) -> None:
+        """Show a notification that context was compacted."""
+        if self._live is None:
+            return
+        if self._buffer:
+            self._buffer += "\n\n"
+        self._buffer += f"> *{message}*"
+        self._started = True
+        self._refresh_live()
+
     def show_cancelling(self) -> None:
         """Update the footer to acknowledge that cancellation is in progress."""
         self._cancel_msg = random.choice(CANCEL_MESSAGES)  # noqa: S311

@@ -6,6 +6,7 @@ from collections.abc import AsyncIterator
 import anthropic
 
 from anton.llm.provider import (
+    ContextOverflowError,
     LLMProvider,
     LLMResponse,
     StreamComplete,
@@ -16,6 +17,7 @@ from anton.llm.provider import (
     StreamToolUseStart,
     ToolCall,
     Usage,
+    compute_context_pressure,
 )
 
 
@@ -47,7 +49,13 @@ class AnthropicProvider(LLMProvider):
         if tool_choice:
             kwargs["tool_choice"] = tool_choice
 
-        response = await self._client.messages.create(**kwargs)
+        try:
+            response = await self._client.messages.create(**kwargs)
+        except anthropic.BadRequestError as exc:
+            msg = str(exc).lower()
+            if "prompt is too long" in msg or "context limit" in msg:
+                raise ContextOverflowError(str(exc)) from exc
+            raise
 
         content_text = ""
         tool_calls: list[ToolCall] = []
@@ -60,12 +68,14 @@ class AnthropicProvider(LLMProvider):
                     ToolCall(id=block.id, name=block.name, input=block.input)
                 )
 
+        input_tokens = response.usage.input_tokens
         return LLMResponse(
             content=content_text,
             tool_calls=tool_calls,
             usage=Usage(
-                input_tokens=response.usage.input_tokens,
+                input_tokens=input_tokens,
                 output_tokens=response.usage.output_tokens,
+                context_pressure=compute_context_pressure(model, input_tokens),
             ),
             stop_reason=response.stop_reason,
         )
@@ -97,54 +107,64 @@ class AnthropicProvider(LLMProvider):
         # Track content blocks by index for tool correlation
         blocks: dict[int, dict] = {}
 
-        async with self._client.messages.stream(**kwargs) as stream:
-            async for event in stream:
-                if event.type == "message_start":
-                    usage = event.message.usage
-                    input_tokens = usage.input_tokens
-                    output_tokens = getattr(usage, "output_tokens", 0)
+        try:
+            async with self._client.messages.stream(**kwargs) as stream:
+                async for event in stream:
+                    if event.type == "message_start":
+                        usage = event.message.usage
+                        input_tokens = usage.input_tokens
+                        output_tokens = getattr(usage, "output_tokens", 0)
 
-                elif event.type == "content_block_start":
-                    idx = event.index
-                    block = event.content_block
-                    if block.type == "tool_use":
-                        blocks[idx] = {"type": "tool_use", "id": block.id, "name": block.name, "json_parts": []}
-                        yield StreamToolUseStart(id=block.id, name=block.name)
-                    else:
-                        blocks[idx] = {"type": "text"}
+                    elif event.type == "content_block_start":
+                        idx = event.index
+                        block = event.content_block
+                        if block.type == "tool_use":
+                            blocks[idx] = {"type": "tool_use", "id": block.id, "name": block.name, "json_parts": []}
+                            yield StreamToolUseStart(id=block.id, name=block.name)
+                        else:
+                            blocks[idx] = {"type": "text"}
 
-                elif event.type == "content_block_delta":
-                    idx = event.index
-                    delta = event.delta
-                    if delta.type == "text_delta":
-                        content_text += delta.text
-                        yield StreamTextDelta(text=delta.text)
-                    elif delta.type == "input_json_delta":
+                    elif event.type == "content_block_delta":
+                        idx = event.index
+                        delta = event.delta
+                        if delta.type == "text_delta":
+                            content_text += delta.text
+                            yield StreamTextDelta(text=delta.text)
+                        elif delta.type == "input_json_delta":
+                            info = blocks.get(idx, {})
+                            if info.get("type") == "tool_use":
+                                info["json_parts"].append(delta.partial_json)
+                                yield StreamToolUseDelta(id=info["id"], json_delta=delta.partial_json)
+
+                    elif event.type == "content_block_stop":
+                        idx = event.index
                         info = blocks.get(idx, {})
                         if info.get("type") == "tool_use":
-                            info["json_parts"].append(delta.partial_json)
-                            yield StreamToolUseDelta(id=info["id"], json_delta=delta.partial_json)
+                            raw_json = "".join(info["json_parts"])
+                            parsed_input = json.loads(raw_json) if raw_json else {}
+                            tool_calls.append(
+                                ToolCall(id=info["id"], name=info["name"], input=parsed_input)
+                            )
+                            yield StreamToolUseEnd(id=info["id"])
 
-                elif event.type == "content_block_stop":
-                    idx = event.index
-                    info = blocks.get(idx, {})
-                    if info.get("type") == "tool_use":
-                        raw_json = "".join(info["json_parts"])
-                        parsed_input = json.loads(raw_json) if raw_json else {}
-                        tool_calls.append(
-                            ToolCall(id=info["id"], name=info["name"], input=parsed_input)
-                        )
-                        yield StreamToolUseEnd(id=info["id"])
-
-                elif event.type == "message_delta":
-                    stop_reason = event.delta.stop_reason
-                    output_tokens = event.usage.output_tokens
+                    elif event.type == "message_delta":
+                        stop_reason = event.delta.stop_reason
+                        output_tokens = event.usage.output_tokens
+        except anthropic.BadRequestError as exc:
+            msg = str(exc).lower()
+            if "prompt is too long" in msg or "context limit" in msg:
+                raise ContextOverflowError(str(exc)) from exc
+            raise
 
         yield StreamComplete(
             response=LLMResponse(
                 content=content_text,
                 tool_calls=tool_calls,
-                usage=Usage(input_tokens=input_tokens, output_tokens=output_tokens),
+                usage=Usage(
+                    input_tokens=input_tokens,
+                    output_tokens=output_tokens,
+                    context_pressure=compute_context_pressure(model, input_tokens),
+                ),
                 stop_reason=stop_reason,
             )
         )
