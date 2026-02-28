@@ -2,9 +2,9 @@
 
 ## Introduction 
 
-I was reading the book `How to create a mind` by Ray Kurzweil, in 2015, a few years before we started MindsDB, at that time it became obvious that at some point in the near future; one could programatically create Mind mirroring the brain's building blocks, however, after trying I came to the conclusion that one foundamental block needed to evolve/happen, and `Anticipation Block architecture`, you can read more about this thought [here](https://torrmal.github.io/2015/12/29/anticipation-loop/).
+Reading the book `How to create a mind` by Ray Kurzweil, back in 2015, a few years before we started MindsDB, I left believing, that one could programatically create Mind mirroring the brain's building blocks, however, after trying I came to the conclusion that one foundamental block needed to happen, and `Anticipation Block architecture`, you can read more about this thought [here](https://torrmal.github.io/2015/12/29/anticipation-loop/).
 
-Well, turns out the world did build an architecture like that, which is what we know as transformers, and LLMs today (2026) are at a point where the ideas seeded in us by 'How to create a Mind' are very viable from an implementation point of view. So 11 years later this try two ;)
+Well, turns out the world did build an architecture like that just a few years later, which is what we know as transformers, and LLMs today (2026) are at a point where the ideas that were seeded in us by 'How to create a Mind' are very viable from an implementation point of view. So 11 years later this try two ;)
 
 ## A mini Mind
 
