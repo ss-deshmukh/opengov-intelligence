@@ -32,12 +32,12 @@ anton
 That drops you into a conversation with Anton. Talk to Anton like a person, for example, ask Anton this:
 
 ```
-Information about inflation in the US is found on this website:
-     https://www.bls.gov/news.release/cpi.nr0.htm
-Plot me the consumer price items contributions to inflation, stacked per month.
+I hold 50 AAPL, 200 NVDA, and 10 AMZN. Get today's prices, calculate my
+total portfolio value, show me the 30-day performance of each stock, and
+any other information that might be useful. Give me a complete dashboard.
 ```
 
-What happens next is the interesting part. Anton doesn't have any particular skill to begin with. It figures it out live: fetches the page, parses the HTML, writes scratchpad code on the fly, and generates a stacked bar chart with the information you asked for — all in one conversation, with no setup.
+What happens next is the interesting part. Anton doesn't have any particular skill to begin with. It figures it out live: scrapes live prices, writes scratchpad code on the fly, crunches the numbers, and builds you a full dashboard — all in one conversation, with no setup.
 That's the point: you describe a problem in plain language, and Anton assembles the toolchain, writes the code, and delivers the result.
 
 ### Another example
