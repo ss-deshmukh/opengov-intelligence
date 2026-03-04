@@ -746,9 +746,10 @@ def _build_runtime_context(settings: AntonSettings) -> str:
             f"- Datasource: {settings.minds_datasource}\n"
             f"- Engine: {engine}\n"
             f"- Minds URL: {settings.minds_url}\n"
-            f'- To query data, use the scratchpad: query_minds_data("SELECT ...")\n'
-            f"  Returns dict with 'type', 'data' (list of rows), 'column_names', 'error_message'.\n"
+            f"- To query data, use the scratchpad with the built-in `query_minds_data()` function.\n"
+            f"  It is pre-loaded in the scratchpad namespace — DO NOT import it. Just call it directly.\n"
             f'  Example: result = query_minds_data("SELECT * FROM users LIMIT 5")\n'
+            f"  Returns dict with 'type', 'data' (list of rows), 'column_names', 'error_message'.\n"
             f'  Optional: query_minds_data("SELECT ...", datasource="other_ds")\n'
             f"- Write SQL appropriate for the {engine} engine."
         )
