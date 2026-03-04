@@ -629,7 +629,6 @@ class ChatSession:
         # Text-only final response — append to history
         reply = llm_response.content or ""
         self._history.append({"role": "assistant", "content": reply})
-        self._persist_history()
 
         # Consolidation: replay scratchpad sessions to extract lessons
         if self._cortex is not None and self._cortex.mode != "off":
