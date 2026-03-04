@@ -1258,35 +1258,10 @@ async def _handle_setup_minds(
     global_ws = _Workspace(Path.home())
 
     console.print()
-    console.print("[anton.cyan]Minds datasource configuration[/]")
-    console.print()
 
-    # Show current config
-    if settings.minds_datasource:
-        console.print(f"  URL:         [bold]{settings.minds_url}[/]")
-        console.print(f"  Datasource:  [bold]{settings.minds_datasource}[/]")
-        console.print(f"  Engine:      [bold]{settings.minds_datasource_engine or 'unknown'}[/]")
-        console.print()
-
-    # --- API key ---
-    current_key = settings.minds_api_key or ""
-    key_prompt = "Minds API key"
-    if current_key:
-        key_prompt += " [dim](Enter to keep existing)[/]"
-    api_key = Prompt.ask(key_prompt, default=current_key, console=console, password=True)
-    api_key = api_key.strip()
-    if not api_key:
-        console.print("[anton.warning]API key is required.[/]")
-        console.print()
-        return session
-
-    # --- URL ---
-    minds_url = Prompt.ask(
-        "Minds URL",
-        default=settings.minds_url,
-        console=console,
-    )
-    minds_url = _normalize_minds_url(minds_url)
+    # Use key and URL from settings (already configured in _ensure_api_key)
+    api_key = settings.minds_api_key or ""
+    minds_url = _normalize_minds_url(settings.minds_url)
 
     # --- Test connection ---
     ssl_verify = settings.minds_ssl_verify
@@ -1728,16 +1703,6 @@ async def _chat_loop(console: Console, settings: AntonSettings, *, resume: bool 
         if resumed_id:
             current_session_id = resumed_id
 
-    # First-run: if no Minds datasource is configured, keep running setup
-    # until a datasource is successfully connected.
-    while not settings.minds_datasource:
-        session = await _handle_setup_minds(
-            console, settings, workspace, state,
-            self_awareness, cortex, session, episodic=episodic,
-        )
-        if not settings.minds_datasource:
-            console.print("[anton.warning]Datasource setup is required to continue. Let's try again.[/]")
-            console.print()
 
     console.print("[anton.muted] Chat with Anton. Type '/help' for commands or 'exit' to quit.[/]")
     console.print(f"[anton.cyan_dim] {'━' * 40}[/]")
