@@ -193,6 +193,9 @@ def main(
     folder: str | None = typer.Option(
         None, "--folder", "-f", help="Workspace folder (defaults to cwd)"
     ),
+    resume: bool = typer.Option(
+        False, "--resume", "-r", help="Resume a previous chat session"
+    ),
 ) -> None:
     """Anton — a self-evolving autonomous system."""
     _ensure_dependencies(console)
@@ -215,7 +218,7 @@ def main(
         render_banner(console)
         _ensure_workspace(settings)
         _ensure_api_key(settings)
-        run_chat(console, settings)
+        run_chat(console, settings, resume=resume)
 
 
 def _has_api_key(settings) -> bool:

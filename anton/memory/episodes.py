@@ -58,6 +58,15 @@ class EpisodicMemory:
         self._file.touch()
         return self._session_id
 
+    def resume_session(self, session_id: str) -> str:
+        """Resume an existing session by reusing its session ID and file."""
+        self._session_id = session_id
+        self._dir.mkdir(parents=True, exist_ok=True)
+        self._file = self._dir / f"{self._session_id}.jsonl"
+        if not self._file.exists():
+            self._file.touch()
+        return self._session_id
+
     def log(self, episode: Episode) -> None:
         """Append an episode to the current session file.  Never raises."""
         if not self._enabled or self._file is None:
