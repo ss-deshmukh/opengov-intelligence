@@ -1332,6 +1332,9 @@ async def _handle_setup_minds(
     global_ws.set_secret("ANTON_MINDS_DATASOURCE_ENGINE", ds_engine)
     global_ws.set_secret("ANTON_MINDS_SSL_VERIFY", "true" if ssl_verify else "false")
 
+    # Reload env vars into the process so the scratchpad subprocess inherits them
+    global_ws.apply_env_to_process()
+
     settings.minds_api_key = api_key
     settings.minds_url = minds_url
     settings.minds_datasource = ds_name

@@ -279,6 +279,9 @@ def _ensure_api_key(settings) -> None:
     ws.set_secret("ANTON_MINDS_API_KEY", api_key)
     ws.set_secret("ANTON_MINDS_URL", minds_url)
 
+    # Reload env vars into the process so the scratchpad subprocess inherits them
+    ws.apply_env_to_process()
+
     console.print()
     console.print(f"[anton.success]Saved to {ws.env_path}[/]")
     console.print()

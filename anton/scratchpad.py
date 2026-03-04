@@ -349,6 +349,7 @@ class Scratchpad:
             sdk_key = {
                 "anthropic": "ANTHROPIC_API_KEY",
                 "openai": "OPENAI_API_KEY",
+                "openai-compatible": "OPENAI_API_KEY",
             }.get(self._coding_provider, "")
             if sdk_key and sdk_key not in env:
                 env[sdk_key] = self._coding_api_key
