@@ -249,26 +249,58 @@ def _ensure_api_key(settings) -> None:
         default="https://mdb.ai",
         console=console,
     ).strip()
+    if not minds_url.startswith("http://") and not minds_url.startswith("https://"):
+        minds_url = "https://" + minds_url
+    minds_url = minds_url.rstrip("/")
 
-    base_url = f"{minds_url.rstrip('/')}/api/v1"
-
-    settings.openai_api_key = api_key
-    settings.openai_base_url = base_url
-    settings.planning_provider = "openai-compatible"
-    settings.coding_provider = "openai-compatible"
-    settings.planning_model = "_reason_"
-    settings.coding_model = "_code_"
+    # Store Minds credentials
     settings.minds_api_key = api_key
     settings.minds_url = minds_url
-
-    ws.set_secret("ANTON_OPENAI_API_KEY", api_key)
-    ws.set_secret("ANTON_OPENAI_BASE_URL", base_url)
-    ws.set_secret("ANTON_PLANNING_PROVIDER", "openai-compatible")
-    ws.set_secret("ANTON_CODING_PROVIDER", "openai-compatible")
-    ws.set_secret("ANTON_PLANNING_MODEL", "_reason_")
-    ws.set_secret("ANTON_CODING_MODEL", "_code_")
     ws.set_secret("ANTON_MINDS_API_KEY", api_key)
     ws.set_secret("ANTON_MINDS_URL", minds_url)
+
+    # Test if the Minds server supports LLM endpoints (_code_/_reason_)
+    console.print()
+    console.print("[anton.muted]Testing LLM endpoints on Minds server...[/]")
+
+    from anton.chat import _minds_test_llm
+    llm_ok = _minds_test_llm(minds_url, api_key, verify=True)
+    if not llm_ok:
+        # Retry without SSL verification
+        llm_ok = _minds_test_llm(minds_url, api_key, verify=False)
+
+    if llm_ok:
+        console.print("[anton.success]LLM endpoints available — using Minds server as LLM provider.[/]")
+        base_url = f"{minds_url}/api/v1"
+        settings.openai_api_key = api_key
+        settings.openai_base_url = base_url
+        settings.planning_provider = "openai-compatible"
+        settings.coding_provider = "openai-compatible"
+        settings.planning_model = "_reason_"
+        settings.coding_model = "_code_"
+        ws.set_secret("ANTON_OPENAI_API_KEY", api_key)
+        ws.set_secret("ANTON_OPENAI_BASE_URL", base_url)
+        ws.set_secret("ANTON_PLANNING_PROVIDER", "openai-compatible")
+        ws.set_secret("ANTON_CODING_PROVIDER", "openai-compatible")
+        ws.set_secret("ANTON_PLANNING_MODEL", "_reason_")
+        ws.set_secret("ANTON_CODING_MODEL", "_code_")
+    else:
+        console.print("[anton.warning]LLM endpoints not available on this server.[/]")
+        anthropic_key = Prompt.ask("Anthropic API key (required for LLM)", console=console)
+        if not anthropic_key.strip():
+            console.print("[anton.error]No API key provided. Exiting.[/]")
+            raise typer.Exit(1)
+        anthropic_key = anthropic_key.strip()
+        settings.anthropic_api_key = anthropic_key
+        settings.planning_provider = "anthropic"
+        settings.coding_provider = "anthropic"
+        settings.planning_model = "claude-sonnet-4-6"
+        settings.coding_model = "claude-haiku-4-5-20251001"
+        ws.set_secret("ANTON_ANTHROPIC_API_KEY", anthropic_key)
+        ws.set_secret("ANTON_PLANNING_PROVIDER", "anthropic")
+        ws.set_secret("ANTON_CODING_PROVIDER", "anthropic")
+        ws.set_secret("ANTON_PLANNING_MODEL", "claude-sonnet-4-6")
+        ws.set_secret("ANTON_CODING_MODEL", "claude-haiku-4-5-20251001")
 
     # Reload env vars into the process so the scratchpad subprocess inherits them
     ws.apply_env_to_process()
