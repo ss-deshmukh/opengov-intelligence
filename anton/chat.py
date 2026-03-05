@@ -1525,7 +1525,7 @@ def _print_slash_help(console: Console) -> None:
     """Print available slash commands."""
     console.print()
     console.print("[anton.cyan]Available commands:[/]")
-    console.print("  [bold]/setup[/]       — Configure models or memory settings")
+    console.print("  [bold]/setup[/]       — Configure datasources and memory settings")
     console.print("  [bold]/memory[/]      — Show memory status dashboard")
     console.print("  [bold]/paste[/]       — Attach clipboard image to your message")
     console.print("  [bold]/resume[/]      — Resume a previous chat session")
