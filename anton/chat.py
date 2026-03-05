@@ -1245,6 +1245,38 @@ def _minds_list_datasources(base_url: str, api_key: str, verify: bool = True) ->
     return data.get("datasources", data if isinstance(data, list) else [])
 
 
+def _minds_test_llm(base_url: str, api_key: str, verify: bool = True) -> bool:
+    """Test if the Minds server supports LLM endpoints (_code_/_reason_ models)."""
+    import json as _json
+    import ssl
+    import urllib.request
+
+    url = f"{base_url}/api/v1/chat/completions"
+    payload = _json.dumps({
+        "model": "_code_",
+        "messages": [{"role": "user", "content": "ping"}],
+        "max_tokens": 1,
+    }).encode()
+
+    req = urllib.request.Request(url, data=payload, method="POST")
+    req.add_header("Authorization", f"Bearer {api_key}")
+    req.add_header("Content-Type", "application/json")
+    req.add_header("Accept", "application/json")
+    req.add_header("User-Agent", "anton/1.0")
+
+    ctx = None
+    if not verify:
+        ctx = ssl.create_default_context()
+        ctx.check_hostname = False
+        ctx.verify_mode = ssl.CERT_NONE
+
+    try:
+        with urllib.request.urlopen(req, context=ctx, timeout=30) as resp:
+            return resp.status == 200
+    except Exception:
+        return False
+
+
 async def _handle_setup_minds(
     console: Console,
     settings: AntonSettings,
@@ -1340,9 +1372,6 @@ async def _handle_setup_minds(
     global_ws.set_secret("ANTON_MINDS_DATASOURCE_ENGINE", ds_engine)
     global_ws.set_secret("ANTON_MINDS_SSL_VERIFY", "true" if ssl_verify else "false")
 
-    # Reload env vars into the process so the scratchpad subprocess inherits them
-    global_ws.apply_env_to_process()
-
     settings.minds_api_key = api_key
     settings.minds_url = minds_url
     settings.minds_datasource = ds_name
@@ -1351,6 +1380,50 @@ async def _handle_setup_minds(
 
     console.print()
     console.print(f"[anton.success]Connected to datasource: {ds_name} ({ds_engine})[/]")
+
+    # --- Test if the Minds server also supports LLM endpoints ---
+    console.print()
+    console.print("[anton.muted]Testing LLM endpoints on this server...[/]")
+    llm_ok = _minds_test_llm(minds_url, api_key, verify=ssl_verify)
+
+    if llm_ok:
+        console.print("[anton.success]LLM endpoints available — using Minds server as LLM provider.[/]")
+        base_url = f"{minds_url.rstrip('/')}/api/v1"
+        settings.openai_api_key = api_key
+        settings.openai_base_url = base_url
+        settings.planning_provider = "openai-compatible"
+        settings.coding_provider = "openai-compatible"
+        settings.planning_model = "_reason_"
+        settings.coding_model = "_code_"
+        global_ws.set_secret("ANTON_OPENAI_API_KEY", api_key)
+        global_ws.set_secret("ANTON_OPENAI_BASE_URL", base_url)
+        global_ws.set_secret("ANTON_PLANNING_PROVIDER", "openai-compatible")
+        global_ws.set_secret("ANTON_CODING_PROVIDER", "openai-compatible")
+        global_ws.set_secret("ANTON_PLANNING_MODEL", "_reason_")
+        global_ws.set_secret("ANTON_CODING_MODEL", "_code_")
+    else:
+        console.print("[anton.warning]LLM endpoints not available on this server.[/]")
+        # Check if Anthropic key is already configured
+        has_anthropic = settings.anthropic_api_key or os.environ.get("ANTHROPIC_API_KEY")
+        if not has_anthropic:
+            anthropic_key = Prompt.ask("Anthropic API key (for LLM)", console=console)
+            if anthropic_key.strip():
+                anthropic_key = anthropic_key.strip()
+                settings.anthropic_api_key = anthropic_key
+                settings.planning_provider = "anthropic"
+                settings.coding_provider = "anthropic"
+                settings.planning_model = "claude-sonnet-4-6"
+                settings.coding_model = "claude-haiku-4-5-20251001"
+                global_ws.set_secret("ANTON_ANTHROPIC_API_KEY", anthropic_key)
+                global_ws.set_secret("ANTON_PLANNING_PROVIDER", "anthropic")
+                global_ws.set_secret("ANTON_CODING_PROVIDER", "anthropic")
+                global_ws.set_secret("ANTON_PLANNING_MODEL", "claude-sonnet-4-6")
+                global_ws.set_secret("ANTON_CODING_MODEL", "claude-haiku-4-5-20251001")
+                console.print("[anton.success]Anthropic API key saved.[/]")
+            else:
+                console.print("[anton.warning]No API key provided — LLM calls will not work.[/]")
+
+    global_ws.apply_env_to_process()
     console.print()
 
     return _rebuild_session(
