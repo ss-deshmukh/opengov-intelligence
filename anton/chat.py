@@ -759,19 +759,6 @@ def _build_runtime_context(settings: AntonSettings) -> str:
         )
         if settings.minds_datasource:
             ctx += f"- Write SQL appropriate for the {engine} engine.\n"
-
-        # Inject decoded system knowledge from mind parameters
-        if settings.minds_system_knowledge:
-            import base64
-            try:
-                decoded = base64.b64decode(settings.minds_system_knowledge).decode()
-                if decoded.strip():
-                    ctx += (
-                        f"\n**DATASOURCE CONTEXT (from Mind configuration):**\n"
-                        f"{decoded}"
-                    )
-            except Exception:
-                pass
     return ctx
 
 
@@ -796,6 +783,9 @@ def _rebuild_session(
     if cortex is not None:
         cortex._llm = state["llm_client"]
         cortex.mode = settings.memory_mode
+
+    # Refresh mind knowledge from remote server
+    _minds_refresh_knowledge(settings, cortex)
 
     runtime_context = _build_runtime_context(settings)
     api_key = (
@@ -1265,6 +1255,62 @@ def _minds_list_minds(base_url: str, api_key: str, verify: bool = True) -> list[
     return data.get("minds", data if isinstance(data, list) else [])
 
 
+def _minds_get_mind(base_url: str, api_key: str, mind_name: str, verify: bool = True) -> dict | None:
+    """Fetch a single mind's details from a Minds server."""
+    import json as _json
+    import ssl
+    import urllib.request
+
+    url = f"{base_url}/api/v1/minds/{mind_name}"
+    req = urllib.request.Request(url, method="GET")
+    req.add_header("Authorization", f"Bearer {api_key}")
+    req.add_header("Accept", "application/json")
+    req.add_header("User-Agent", "anton/1.0")
+
+    ctx = None
+    if not verify:
+        ctx = ssl.create_default_context()
+        ctx.check_hostname = False
+        ctx.verify_mode = ssl.CERT_NONE
+
+    try:
+        with urllib.request.urlopen(req, context=ctx, timeout=15) as resp:
+            return _json.loads(resp.read().decode())
+    except Exception:
+        return None
+
+
+def _minds_refresh_knowledge(settings: AntonSettings, cortex) -> None:
+    """Fetch the configured mind's parameters and update the memory topic file."""
+    if not settings.minds_api_key or not settings.minds_mind_name or cortex is None:
+        return
+
+    mind = _minds_get_mind(
+        _normalize_minds_url(settings.minds_url),
+        settings.minds_api_key,
+        settings.minds_mind_name,
+        verify=settings.minds_ssl_verify,
+    )
+    if not mind:
+        return
+
+    params = mind.get("parameters", {}) or {}
+    parts = []
+    if params.get("system_prompt"):
+        parts.append(params["system_prompt"])
+    if params.get("prompt_template"):
+        parts.append(params["prompt_template"])
+
+    if not parts:
+        return
+
+    knowledge = "\n\n".join(parts)
+    topic_content = f"# Minds — {settings.minds_mind_name}\n\n{knowledge}\n"
+    topic_path = cortex.project_hc._topics_dir / "minds-datasource.md"
+    cortex.project_hc._topics_dir.mkdir(parents=True, exist_ok=True)
+    cortex.project_hc._encode_with_lock(topic_path, topic_content, mode="write")
+
+
 def _minds_list_datasources(base_url: str, api_key: str, verify: bool = True) -> list[dict]:
     """Fetch datasource list from a Minds server using stdlib urllib."""
     import json as _json
@@ -1335,7 +1381,6 @@ async def _handle_connect(
     episodic: EpisodicMemory | None = None,
 ) -> ChatSession:
     """Connect to a Minds server: select a Mind, then optionally a datasource."""
-    import base64
     import ssl
     import urllib.error
 
@@ -1468,23 +1513,12 @@ async def _handle_connect(
         except Exception:
             ds_engine = "unknown"
 
-    # --- Build system knowledge from mind parameters ---
-    params = selected_mind.get("parameters", {}) or {}
-    knowledge_parts = []
-    if params.get("system_prompt"):
-        knowledge_parts.append(params["system_prompt"])
-    if params.get("prompt_template"):
-        knowledge_parts.append(params["prompt_template"])
-    system_knowledge = "\n\n".join(knowledge_parts)
-    encoded_knowledge = base64.b64encode(system_knowledge.encode()).decode() if system_knowledge else ""
-
     # --- Persist to global ~/.anton/.env ---
     global_ws.set_secret("ANTON_MINDS_API_KEY", api_key)
     global_ws.set_secret("ANTON_MINDS_URL", minds_url)
     global_ws.set_secret("ANTON_MINDS_MIND_NAME", mind_name)
     global_ws.set_secret("ANTON_MINDS_DATASOURCE", ds_name)
     global_ws.set_secret("ANTON_MINDS_DATASOURCE_ENGINE", ds_engine)
-    global_ws.set_secret("ANTON_MINDS_SYSTEM_KNOWLEDGE", encoded_knowledge)
     global_ws.set_secret("ANTON_MINDS_SSL_VERIFY", "true" if ssl_verify else "false")
 
     settings.minds_api_key = api_key
@@ -1492,7 +1526,6 @@ async def _handle_connect(
     settings.minds_mind_name = mind_name
     settings.minds_datasource = ds_name
     settings.minds_datasource_engine = ds_engine
-    settings.minds_system_knowledge = encoded_knowledge
     settings.minds_ssl_verify = ssl_verify
 
     console.print()

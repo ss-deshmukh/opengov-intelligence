@@ -54,7 +54,6 @@ class AntonSettings(BaseSettings):
     minds_mind_name: str | None = None
     minds_datasource: str | None = None
     minds_datasource_engine: str | None = None
-    minds_system_knowledge: str | None = None
     minds_ssl_verify: bool = True
 
     _workspace: Path = PrivateAttr(default=None)

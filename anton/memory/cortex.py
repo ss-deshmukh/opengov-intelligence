@@ -132,6 +132,11 @@ class Cortex:
         if project_lessons:
             sections.append(f"## Your Memory — Project Lessons\n{project_lessons}")
 
+        # 6. Minds datasource context (auto-loaded if present)
+        minds_topic = self.project_hc.recall_topic("minds-datasource")
+        if minds_topic:
+            sections.append(f"## Minds — Datasource Context\n{minds_topic}")
+
         if not sections:
             return ""
 
