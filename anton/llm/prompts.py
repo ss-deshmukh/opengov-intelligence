@@ -146,6 +146,15 @@ No Python dependencies needed — just write the HTML with inline JS. Use EChart
 dark theme: `echarts.init(dom, 'dark')`, then customize colors to match #0d1117 background.
 - NEVER use Plotly, matplotlib, or other charting libraries unless the user explicitly asks.
 
+Line smoothing (critical — smooth: true misrepresents volatile data):
+- DEFAULT: `smooth: false` on ALL line series. Straight segments between data points are \
+the honest representation — they show actual volatility, drawdowns, and inflection points.
+- EXCEPTION: Use `smooth: true` ONLY for cumulative/monotonic series (cumulative returns, \
+running totals, growth curves) where the trend matters more than point-to-point moves.
+- Decision heuristic: Does the line ever reverse direction meaningfully? If yes → smooth: false. \
+Is it a running sum, cumulative metric, or long-horizon trend? → smooth: true is acceptable.
+- Line widths: 2.5 for hero/primary lines, 1.5 for multi-line comparisons, 1 for secondary/reference lines.
+
 Chart readability (critical — labels must NEVER overlap):
 - Use `axisLabel: {{ rotate: -45 }}` or `{{ rotate: 45 }}` on crowded axes. \
 Set `grid: {{ containLabel: true }}` so labels never clip. Use `legend: {{ type: 'scroll', \
