@@ -6,8 +6,10 @@ import pytest
 
 from anton.chat import ChatSession
 from anton.llm.provider import (
+    ContextOverflowError,
     LLMResponse,
     StreamComplete,
+    StreamContextCompacted,
     StreamTextDelta,
     ToolCall,
     Usage,
@@ -100,3 +102,74 @@ class TestChatSessionStreaming:
         # History: user + assistant
         assert len(session.history) == 2
         assert session.history[1]["content"] == "Hello world!"
+
+
+class TestContextCompaction:
+    async def test_overflow_then_high_pressure_summarizes_once(self):
+        """If the first LLM call overflows and the retry comes back with high
+        context pressure, _summarize_history must only be called once — not twice."""
+        call_count = 0
+
+        async def _plan_stream(**kwargs):
+            nonlocal call_count
+            call_count += 1
+            if call_count == 1:
+                raise ContextOverflowError("overflow")
+                yield  # make it an async generator
+            else:
+                yield StreamComplete(
+                    response=LLMResponse(
+                        content="Done",
+                        usage=Usage(context_pressure=0.9),
+                    )
+                )
+
+        session = ChatSession(AsyncMock())
+        session._llm.plan_stream = _plan_stream
+        session._summarize_history = AsyncMock()
+
+        events = [e async for e in session.turn_stream("hello")]
+
+        assert session._summarize_history.call_count == 1
+        compacted = [e for e in events if isinstance(e, StreamContextCompacted)]
+        assert len(compacted) == 1
+
+    async def test_high_pressure_alone_summarizes_once(self):
+        """A single response above the pressure threshold triggers exactly one compaction."""
+        async def _plan_stream(**kwargs):
+            yield StreamComplete(
+                response=LLMResponse(
+                    content="Done",
+                    usage=Usage(context_pressure=0.9),
+                )
+            )
+
+        session = ChatSession(AsyncMock())
+        session._llm.plan_stream = _plan_stream
+        session._summarize_history = AsyncMock()
+
+        events = [e async for e in session.turn_stream("hello")]
+
+        assert session._summarize_history.call_count == 1
+        compacted = [e for e in events if isinstance(e, StreamContextCompacted)]
+        assert len(compacted) == 1
+
+    async def test_normal_turn_does_not_summarize(self):
+        """A normal turn with no overflow and low pressure never triggers compaction."""
+        async def _plan_stream(**kwargs):
+            yield StreamComplete(
+                response=LLMResponse(
+                    content="Hello!",
+                    usage=Usage(context_pressure=0.1),
+                )
+            )
+
+        session = ChatSession(AsyncMock())
+        session._llm.plan_stream = _plan_stream
+        session._summarize_history = AsyncMock()
+
+        events = [e async for e in session.turn_stream("hello")]
+
+        session._summarize_history.assert_not_called()
+        compacted = [e for e in events if isinstance(e, StreamContextCompacted)]
+        assert len(compacted) == 0
