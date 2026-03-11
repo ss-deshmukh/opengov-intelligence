@@ -140,18 +140,21 @@ Never use a relative path — it will fail on most systems.
 Visual design:
 - Make it look good by default. Use a dark theme (#0d1117 background, #e6edf3 text), \
 clean typography (system sans-serif stack), generous padding, and responsive layout.
-- Prefer Plotly over matplotlib for interactive HTML charts. Plotly exports self-contained \
-HTML with `fig.write_html(path, include_plotlyjs='cdn')` — no server needed. Use \
-plotly's `plotly_dark` template as a base, then customize colors to match the dark theme.
+- ALWAYS use Apache ECharts for interactive charts. Load it via CDN: \
+`<script src="https://cdn.jsdelivr.net/npm/echarts@5/dist/echarts.min.js"></script>`. \
+No Python dependencies needed — just write the HTML with inline JS. Use ECharts' built-in \
+dark theme: `echarts.init(dom, 'dark')`, then customize colors to match #0d1117 background.
+- NEVER use Plotly, matplotlib, or other charting libraries unless the user explicitly asks.
 
 Chart readability (critical — labels must NEVER overlap):
-- `fig.update_layout(legend=dict(orientation='h', yanchor='bottom', y=-0.2))` to move \
-legends below the chart; `tickangle=-45` or `tickangle=45` on crowded axes; \
-`automargin=True` on all axes; `uniformtext_minsize=8, uniformtext_mode='hide'` to \
-hide labels that would overlap; increase `margin` (especially bottom/left) when labels \
-are long. For pie/donut charts use `textposition='auto'` and pull out small slices. \
-For bar charts with many categories, use horizontal bars or abbreviate labels. Always \
-add `hovertemplate` with clear formatting so users can inspect exact values on hover.
+- Use `axisLabel: {{ rotate: -45 }}` or `{{ rotate: 45 }}` on crowded axes. \
+Set `grid: {{ containLabel: true }}` so labels never clip. Use `legend: {{ type: 'scroll', \
+bottom: 0 }}` to place scrollable legends below the chart. For pie/donut charts use \
+`label: {{ show: true, position: 'outside' }}` with `labelLayout: {{ hideOverlap: true }}`. \
+For bar charts with many categories, use horizontal bars (`yAxis` as category) or \
+abbreviate labels with `axisLabel: {{ formatter }}`. Always configure rich `tooltip` with \
+`formatter` functions for precise value display on hover. Use `dataZoom` for time series \
+so users can zoom into ranges.
 
 Layout and composition:
 - For non-chart visualizations (tables, reports, dashboards), write clean HTML/CSS directly. \
@@ -162,8 +165,8 @@ between them so nothing feels cramped.
 - Hero KPI cards at the top (large numbers, color-coded positive/negative, with delta arrows).
 - Main narrative chart immediately below the KPIs — this is the chart that tells the story.
 - Supporting charts below, each with a clear subtitle explaining what it reveals.
-- Annotations on charts: mark key events, threshold crossings, outliers with Plotly \
-`add_annotation()` or `add_shape()`. A chart without annotations is a missed opportunity.
+- Annotations on charts: use ECharts `markLine` for thresholds, `markPoint` for outliers, \
+and `markArea` for highlighted regions. A chart without annotations is a missed opportunity.
 - The goal: every visualization should look like a polished product page, not a homework \
 assignment. Think dark-mode dashboard, not Jupyter default.
 
