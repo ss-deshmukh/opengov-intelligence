@@ -184,8 +184,12 @@ class StreamDisplay:
             self._live.stop()
             self._live = None
 
-    def _flush_to_permanent(self) -> None:
-        """Stop Live and print all accumulated content as permanent, scrollable output."""
+    def _flush_text(self) -> None:
+        """Stop Live and print accumulated *text* permanently (not the activity tree).
+
+        The activity tree is printed once in finish(). Intermediate flushes
+        only emit text so tool results become scrollable between phases.
+        """
         self._stop_live()
 
         # Print initial text (muted "inner speech")
@@ -197,14 +201,9 @@ class StreamDisplay:
                 self._console.print(Markdown(self._initial_text))
             self._initial_text = ""
 
-        # Print activity tree
-        if self._activities:
-            self._console.print(self._build_activity_tree(final=True))
-            self._activities_printed = True
-
         # Print buffered answer text
         if self._buffer:
-            if not hasattr(self, "_answer_header_printed") or not self._answer_header_printed:
+            if not self._answer_header_printed:
                 self._console.print(Text("anton> ", style="anton.cyan"), end="")
                 self._answer_header_printed = True
             self._console.print(Markdown(self._buffer))
@@ -220,7 +219,6 @@ class StreamDisplay:
         self._buffer = ""
         self._started = False
         self._activities = []
-        self._activities_printed = False
         self._answer_header_printed = False
         self._in_tool_phase = False
         self._answer_started = False
@@ -248,11 +246,11 @@ class StreamDisplay:
         self._refresh_live()
 
     def show_tool_result(self, content: str) -> None:
-        """Flush current content permanently, then print tool result permanently."""
+        """Flush current text permanently, then print tool result permanently."""
         if not self._active:
             return
-        # Flush everything accumulated so far
-        self._flush_to_permanent()
+        # Flush any accumulated text so far
+        self._flush_text()
         # Print the tool result directly — scrollable immediately
         self._console.print(Markdown(content))
         self._last_was_tool = True
@@ -296,9 +294,9 @@ class StreamDisplay:
         if not self._active:
             return
 
-        # Tools finished, LLM is now analyzing — flush results, restart with analyzing spinner
+        # Tools finished, LLM is now analyzing — flush text, restart with analyzing spinner
         if phase == "analyzing":
-            self._flush_to_permanent()
+            self._flush_text()
             self._thinking_msg = random.choice(ANALYZING_MESSAGES)  # noqa: S311
             self._start_live(self._thinking_msg)
             return
@@ -330,7 +328,35 @@ class StreamDisplay:
         self._refresh_live()
 
     def finish(self) -> None:
-        self._flush_to_permanent()
+        self._stop_live()
+
+        # Finalize any activities that never got on_tool_use_end
+        for act in self._activities:
+            if not act.description and act.json_parts:
+                raw = "".join(act.json_parts)
+                act.description = _tool_display_text(act.name, raw)
+
+        # Print initial text
+        if self._initial_text:
+            if self._activities:
+                self._console.print(Text(self._initial_text.rstrip(), style="anton.muted"))
+            else:
+                self._console.print(Text("anton> ", style="anton.cyan"), end="")
+                self._console.print(Markdown(self._initial_text))
+            self._initial_text = ""
+
+        # Print activity tree once
+        if self._activities:
+            self._console.print(self._build_activity_tree(final=True))
+
+        # Print any remaining buffered answer text
+        if self._buffer:
+            if not self._answer_header_printed:
+                self._console.print(Text("anton> ", style="anton.cyan"), end="")
+            self._console.print(Markdown(self._buffer))
+            self._buffer = ""
+
+        # If no activities and no text was printed at all, nothing to show
         self._active = False
         self._console.print()
 
