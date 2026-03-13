@@ -11,14 +11,16 @@ import threading
 _TOTAL_TIMEOUT = 10  # Hard ceiling — update check never blocks startup longer than this
 
 
-def check_and_update(console, settings) -> None:
+def check_and_update(console, settings) -> bool:
     """Check for a newer version of Anton and self-update if available.
 
     Runs in a thread with a hard timeout so it never blocks startup,
     even if DNS resolution or network calls hang on Windows.
+
+    Returns True if an update was applied and the process should restart.
     """
     if settings.disable_autoupdates:
-        return
+        return False
 
     result: dict = {}
 
@@ -36,10 +38,10 @@ def check_and_update(console, settings) -> None:
     for msg in result.get("messages", []):
         console.print(msg)
 
-    # Update in-memory version so the banner shows the new version
     if "new_version" in result:
-        import anton
-        anton.__version__ = result["new_version"]
+        return True
+
+    return False
 
 
 def _check_and_update(result: dict, settings) -> None:
