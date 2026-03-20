@@ -869,3 +869,123 @@ class TestCredentialScrubbing:
             assert "[DS_PASSWORD]" in result
         finally:
             del os.environ["DS_PASSWORD"]
+
+
+# ─────────────────────────────────────────────────────────────────────────────
+# Active datasource scoping
+# ─────────────────────────────────────────────────────────────────────────────
+
+
+class TestActiveDatasourceScoping:
+    """Tests for /connect-data-source <slug> isolating a single datasource."""
+
+    def _make_session(self):
+        from anton.chat import ChatSession
+
+        mock_llm = AsyncMock()
+        session = ChatSession(mock_llm)
+        session._scratchpads = AsyncMock()
+        return session
+
+    def test_active_datasource_defaults_to_none(self):
+        session = self._make_session()
+        assert session._active_datasource is None
+
+    @pytest.mark.asyncio
+    async def test_reconnect_sets_active_datasource(self, vault_dir):
+        """Reconnecting to a slug via prefill sets session._active_datasource."""
+        from anton.chat import _handle_connect_datasource
+
+        vault = DataVault(vault_dir=vault_dir)
+        vault.save("hubspot", "2", {"access_token": "pat-xxx"})
+
+        session = self._make_session()
+        console = MagicMock()
+        console.print = MagicMock()
+
+        with (
+            patch("anton.chat.DataVault", return_value=vault),
+            patch("anton.chat.DatasourceRegistry"),
+        ):
+            result = await _handle_connect_datasource(
+                console, session._scratchpads, session, prefill="hubspot-2"
+            )
+
+        assert result._active_datasource == "hubspot-2"
+
+    @pytest.mark.asyncio
+    async def test_reconnect_clears_other_ds_vars(self, vault_dir):
+        """Reconnecting to one slug removes DS_* vars from all other connections."""
+        from anton.chat import _handle_connect_datasource
+
+        vault = DataVault(vault_dir=vault_dir)
+        vault.save("oracle", "1", {"host": "oracle.host", "user": "admin", "password": "orapass"})
+        vault.save("hubspot", "2", {"access_token": "pat-xxx"})
+
+        # Simulate startup: inject all connections
+        vault.inject_env("oracle", "1")
+        vault.inject_env("hubspot", "2")
+        assert os.environ.get("DS_HOST") == "oracle.host"
+        assert os.environ.get("DS_ACCESS_TOKEN") == "pat-xxx"
+
+        session = self._make_session()
+        console = MagicMock()
+        console.print = MagicMock()
+
+        try:
+            with (
+                patch("anton.chat.DataVault", return_value=vault),
+                patch("anton.chat.DatasourceRegistry"),
+            ):
+                await _handle_connect_datasource(
+                    console, session._scratchpads, session, prefill="hubspot-2"
+                )
+
+            # Oracle vars must be gone; HubSpot var must be present
+            assert "DS_HOST" not in os.environ
+            assert "DS_USER" not in os.environ
+            assert "DS_PASSWORD" not in os.environ
+            assert os.environ.get("DS_ACCESS_TOKEN") == "pat-xxx"
+        finally:
+            vault.clear_ds_env()
+
+    def test_build_datasource_context_no_filter(self, vault_dir):
+        """Without active_only, all vault entries appear in the context."""
+        from anton.chat import _build_datasource_context
+
+        vault = DataVault(vault_dir=vault_dir)
+        vault.save("oracle", "1", {"host": "oracle.host"})
+        vault.save("hubspot", "2", {"access_token": "pat-xxx"})
+
+        with patch("anton.chat.DataVault", return_value=vault):
+            ctx = _build_datasource_context()
+
+        assert "oracle-1" in ctx
+        assert "hubspot-2" in ctx
+
+    def test_build_datasource_context_active_only_filters(self, vault_dir):
+        """With active_only set, only the matching slug appears."""
+        from anton.chat import _build_datasource_context
+
+        vault = DataVault(vault_dir=vault_dir)
+        vault.save("oracle", "1", {"host": "oracle.host"})
+        vault.save("hubspot", "2", {"access_token": "pat-xxx"})
+
+        with patch("anton.chat.DataVault", return_value=vault):
+            ctx = _build_datasource_context(active_only="hubspot-2")
+
+        assert "hubspot-2" in ctx
+        assert "oracle-1" not in ctx
+
+    def test_build_datasource_context_active_only_empty_when_no_match(self, vault_dir):
+        """If active_only doesn't match any slug, the section has no entries."""
+        from anton.chat import _build_datasource_context
+
+        vault = DataVault(vault_dir=vault_dir)
+        vault.save("oracle", "1", {"host": "oracle.host"})
+
+        with patch("anton.chat.DataVault", return_value=vault):
+            ctx = _build_datasource_context(active_only="hubspot-99")
+
+        # Header is present but no datasource lines
+        assert "oracle-1" not in ctx
