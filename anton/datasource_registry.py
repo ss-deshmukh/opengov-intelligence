@@ -128,6 +128,14 @@ class DatasourceRegistry:
         for slug, engine in _parse_file(self._USER_PATH).items():
             self._engines[slug] = engine
 
+    def reload(self) -> None:
+        """Reload datasource definitions from disk."""
+        self._load()
+
+    def validate_file(self, path: Path) -> dict[str, DatasourceEngine]:
+        """Parse a datasources.md file and return its engine definitions."""
+        return _parse_file(path)
+
     def get(self, engine_slug: str) -> DatasourceEngine | None:
         return self._engines.get(engine_slug)
 

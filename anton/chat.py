@@ -47,7 +47,6 @@ from anton.datasource_registry import (
     DatasourceEngine,
     DatasourceField,
     DatasourceRegistry,
-    _parse_file as _ds_parse_file,
 )
 from rich.prompt import Confirm, Prompt
 
@@ -1050,6 +1049,22 @@ def _reset_registered_ds_vars() -> None:
     _DS_KNOWN_VARS.clear()
 
 
+def parse_connection_slug(slug: str, known_engines: list[str]) -> tuple[str, str] | None:
+    """Split a connection slug into (engine, name) using longest-prefix matching.
+
+    Tries each known engine slug longest-first so that 'sql-server-prod-db' is
+    correctly parsed as engine='sql-server', name='prod-db' rather than
+    engine='sql', name='server-prod-db'.
+
+    Returns None if no known engine prefix matches or if the name part is empty.
+    """
+    for engine in sorted(known_engines, key=len, reverse=True):
+        prefix = engine + "-"
+        if slug.startswith(prefix) and len(slug) > len(prefix):
+            return (engine, slug[len(prefix):])
+    return None
+
+
 def _register_secret_vars(
     engine_def: "DatasourceEngine", *, engine: str = "", name: str = ""
 ) -> None:
@@ -1084,12 +1099,16 @@ def _scrub_credentials(text: str) -> str:
     """
     for key in _DS_SECRET_VARS:
         value = os.environ.get(key, "")
-        if not value or len(value) <= 8:
+        if not value:
             continue
         text = text.replace(value, f"[{key}]")
     for key, value in os.environ.items():
         if not key.startswith("DS_") or key in _DS_KNOWN_VARS:
             continue
+        # Length guard only for unknown DS_* vars (not registered secrets).
+        # Unknown vars are matched heuristically — a short value like "on"
+        # or "true" in a DS_ENABLE_X var should not be scrubbed.
+        # Registered secret vars bypass this check entirely.
         if not value or len(value) <= 8:
             continue
         text = text.replace(value, f"[{key}]")
@@ -2723,7 +2742,7 @@ async def _handle_add_custom_datasource(
     )
     tmp_path.write_text(existing + yaml_block, encoding="utf-8")
 
-    parsed = _ds_parse_file(tmp_path)
+    parsed = registry.validate_file(tmp_path)
     if slug in parsed:
         import shutil
 
@@ -2735,7 +2754,7 @@ async def _handle_add_custom_datasource(
             "credentials saved but engine not written to datasources.md.[/]"
         )
 
-    registry._load()
+    registry.reload()
     engine_def = registry.get(slug)
     if engine_def is None:
         # Fallback: construct inline so the flow can continue even if parse failed
@@ -2765,15 +2784,17 @@ async def _handle_connect_datasource(
 
     # ── /edit-data-source path: update credentials for an existing slug ────────
     if datasource_name is not None:
-        slug_parts = datasource_name.split("-", 1)
-        if len(slug_parts) != 2:
+        _parsed = parse_connection_slug(
+            datasource_name, [e.engine for e in registry.all_engines()]
+        )
+        if _parsed is None:
             console.print(
                 f"[anton.warning]Invalid slug '{datasource_name}'. "
                 "Expected format: engine-name.[/]"
             )
             console.print()
             return session
-        edit_engine, edit_name = slug_parts
+        edit_engine, edit_name = _parsed
         existing = vault.load(edit_engine, edit_name)
         if existing is None:
             console.print(
@@ -3388,14 +3409,15 @@ def _handle_list_data_sources(console: Console) -> None:
 def _handle_remove_data_source(console: Console, slug: str) -> None:
     """Delete a connection from the Local Vault by slug (engine-name)."""
     vault = DataVault()
-    parts = slug.split("-", 1)
-    if len(parts) != 2:
+    registry = DatasourceRegistry()
+    _parsed = parse_connection_slug(slug, [e.engine for e in registry.all_engines()])
+    if _parsed is None:
         console.print(
             f"[anton.warning]Invalid name '{slug}'. Use engine-name format.[/]"
         )
         console.print()
         return
-    engine, name = parts
+    engine, name = _parsed
     if vault.load(engine, name) is None:
         console.print(f"[anton.warning]No connection '{slug}' found.[/]")
         console.print()
@@ -3424,17 +3446,16 @@ async def _handle_test_datasource(
         console.print()
         return
 
-    parts = slug.split("-", 1)
-    if len(parts) != 2:
+    vault = DataVault()
+    registry = DatasourceRegistry()
+    _parsed = parse_connection_slug(slug, [e.engine for e in registry.all_engines()])
+    if _parsed is None:
         console.print(
             f"[anton.warning]Invalid name '{slug}'. Use engine-name format.[/]"
         )
         console.print()
         return
-
-    vault = DataVault()
-    registry = DatasourceRegistry()
-    engine, name = parts
+    engine, name = _parsed
     fields = vault.load(engine, name)
     if fields is None:
         console.print(

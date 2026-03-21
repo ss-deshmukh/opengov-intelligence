@@ -21,6 +21,7 @@ from anton.chat import (
     _register_secret_vars,
     _restore_namespaced_env,
     _scrub_credentials,
+    parse_connection_slug,
 )
 from anton.cli import app as _cli_app
 from anton.data_vault import DataVault, _slug_env_prefix
@@ -424,6 +425,42 @@ class TestDatasourceRegistry:
         assert private.fields[0].name == "access_token"
         assert private.fields[0].secret is True
 
+    def test_validate_file_returns_engines(self, registry, datasources_md):
+        result = registry.validate_file(datasources_md)
+        assert "postgresql" in result
+        assert "hubspot" in result
+        assert result["postgresql"].display_name == "PostgreSQL"
+
+    def test_validate_file_missing_returns_empty(self, registry, tmp_path):
+        result = registry.validate_file(tmp_path / "nonexistent.md")
+        assert result == {}
+
+    def test_reload_picks_up_new_engine(self, tmp_path):
+        md = tmp_path / "datasources.md"
+        md.write_text(dedent("""\
+            ## MySQL
+
+            ```yaml
+            engine: mysql
+            display_name: MySQL
+            pip: pymysql
+            name_from: database
+            fields:
+              - name: host
+                required: true
+                description: hostname
+            test_snippet: |
+              print("ok")
+            ```
+        """))
+        reg = DatasourceRegistry.__new__(DatasourceRegistry)
+        reg._engines = {}
+        reg._BUILTIN_PATH = md
+        reg._USER_PATH = tmp_path / "user.md"
+        reg.reload()
+        assert reg.get("mysql") is not None
+        assert reg.get("mysql").display_name == "MySQL"
+
 
 # ─────────────────────────────────────────────────────────────────────────────
 # DatasourceRegistry — derive_name
@@ -776,11 +813,12 @@ class TestCredentialScrubbing:
         assert "[DS_PASSWORD]" in result
 
     def test_scrub_skips_short_values(self, monkeypatch):
-        """Values of 8 characters or fewer are not scrubbed (e.g. port numbers)."""
+        """Registered secrets are always scrubbed regardless of length."""
         _DS_SECRET_VARS.add("DS_PASSWORD")
         monkeypatch.setenv("DS_PASSWORD", "short")
         result = _scrub_credentials("password=short")
-        assert "short" in result
+        assert "short" not in result
+        assert "[DS_PASSWORD]" in result
 
     def test_scrub_fallback_redacts_unknown_long_ds_vars(self, monkeypatch):
         """Long DS_* vars not in _DS_SECRET_VARS are scrubbed as a safety fallback."""
@@ -1244,6 +1282,7 @@ class TestRemoveDatasourceFlow:
 
         with (
             patch("anton.chat.DataVault", return_value=vault),
+            patch("anton.chat.DatasourceRegistry", return_value=registry),
             patch("rich.prompt.Confirm.ask", return_value=True),
         ):
             _handle_remove_data_source(console, "postgresql-prod_db")
@@ -1256,17 +1295,21 @@ class TestRemoveDatasourceFlow:
 
         with (
             patch("anton.chat.DataVault", return_value=vault),
+            patch("anton.chat.DatasourceRegistry", return_value=registry),
             patch("rich.prompt.Confirm.ask", return_value=False),
         ):
             _handle_remove_data_source(console, "postgresql-prod_db")
 
         assert vault.load("postgresql", "prod_db") is not None
 
-    def test_unknown_name_shows_message(self, vault_dir):
+    def test_unknown_name_shows_message(self, vault_dir, registry):
         vault = DataVault(vault_dir=vault_dir)
         console = MagicMock()
 
-        with patch("anton.chat.DataVault", return_value=vault):
+        with (
+            patch("anton.chat.DataVault", return_value=vault),
+            patch("anton.chat.DatasourceRegistry", return_value=registry),
+        ):
             _handle_remove_data_source(console, "postgresql-ghost")
 
         printed = " ".join(str(c) for c in console.print.call_args_list)
@@ -1393,6 +1436,30 @@ class TestDatasourceSlashCommandBehavior:
 # ─────────────────────────────────────────────────────────────────────────────
 # _slug_env_prefix
 # ─────────────────────────────────────────────────────────────────────────────
+
+
+class TestParseConnectionSlug:
+    ENGINES = ["postgresql", "sql-server", "google-big-query"]
+
+    def test_simple_engine(self):
+        assert parse_connection_slug("postgresql-prod_db", self.ENGINES) == ("postgresql", "prod_db")
+
+    def test_hyphenated_engine(self):
+        assert parse_connection_slug("sql-server-prod-db", self.ENGINES) == ("sql-server", "prod-db")
+
+    def test_longest_prefix_wins(self):
+        engines = ["google", "google-big-query"]
+        assert parse_connection_slug("google-big-query-main", engines) == ("google-big-query", "main")
+
+    def test_ambiguous_resolves_to_longest(self):
+        engines = ["sql", "sql-server"]
+        assert parse_connection_slug("sql-server-1", engines) == ("sql-server", "1")
+
+    def test_invalid_slug_no_match(self):
+        assert parse_connection_slug("unknown-engine-name", self.ENGINES) is None
+
+    def test_slug_with_empty_name_part(self):
+        assert parse_connection_slug("postgresql-", self.ENGINES) is None
 
 
 class TestSlugEnvPrefix:
