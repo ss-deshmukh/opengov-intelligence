@@ -224,7 +224,15 @@ def main(
 
 
 def _has_api_key(settings) -> bool:
-    """Check if all configured providers have API keys."""
+    """Check if all configured providers have API keys.
+
+    Also returns False when the Minds API key is missing, so that
+    upgrading users are prompted to set it up on first re-launch.
+    """
+    # Minds key is always required now
+    if not (settings.minds_api_key or os.environ.get("ANTON_MINDS_API_KEY")):
+        return False
+
     providers = {settings.planning_provider, settings.coding_provider}
     for p in providers:
         if p == "anthropic" and not (settings.anthropic_api_key or os.environ.get("ANTHROPIC_API_KEY")):
@@ -245,10 +253,7 @@ def _ensure_api_key(settings) -> None:
 
     ws = Workspace(Path.home())
 
-    if settings.minds_enabled:
-        _ensure_minds_api_key(settings, ws)
-    else:
-        _ensure_anthropic_api_key(settings, ws)
+    _ensure_minds_api_key(settings, ws)
 
     # Reload env vars into the process so the scratchpad subprocess inherits them
     ws.apply_env_to_process()
