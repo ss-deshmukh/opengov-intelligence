@@ -250,7 +250,6 @@ def _onboard(settings) -> None:
     g = "anton.glow"
 
     _INTRO_LINES = [
-        "",
         "Hi! I'm Anton, an autonomous AI coworker built by MindsDB.",
         "",
         "For the best experience, I recommend MindsDB Cloud (mdb.ai)",
@@ -298,7 +297,7 @@ def _animate_onboard(console, version: str, intro_lines: list[str]) -> None:
         frame.append(f" {'━' * 40}\n", style="bold cyan")
         frame.append(f" v{version} \u2014 \"{tagline}\"\n", style="dim")
         frame.append("\n")
-        frame.append(" anton> ", style="bold cyan")
+        frame.append("anton> ", style="bold cyan")
         for line in typed_lines:
             frame.append(line)
         return frame
