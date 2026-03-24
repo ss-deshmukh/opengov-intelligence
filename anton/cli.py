@@ -252,7 +252,7 @@ def _onboard(settings) -> None:
     _INTRO_LINES = [
         "Hi! I'm Anton, an autonomous AI coworker.",
         "",
-        "For the best experience, I recommend MindsDB-Cloud as your LLM Provider:",
+        "For the best experience, I recommend Minds-Cloud as your LLM Provider:",
         "",
         "  \u2713 Smart model routing",
         "  \u2713 Faster responses",
@@ -358,8 +358,8 @@ def _animate_onboard(console, version: str, intro_lines: list[str], *, settings,
     console.print()
     console.print(f"[anton.glow] {'━' * 40}[/]")
     console.print()
-    console.print("  [bold]1[/]  [link=https://mdb.ai][anton.cyan]MindsDB Cloud[/][/link] [anton.success](recommended)[/]")
-    console.print("  [bold]2[/]  [anton.cyan]MindsDB Enterprise Server[/]")
+    console.print("  [bold]1[/]  [link=https://mdb.ai][anton.cyan]Minds-Cloud[/][/link] [anton.success](recommended)[/]")
+    console.print("  [bold]2[/]  [anton.cyan]Minds-Enterprise Server[/]")
     console.print("  [bold]3[/]  [anton.cyan]Bring your own key[/] [anton.muted]Anthropic / OpenAI[/]")
     console.print()
 
@@ -381,8 +381,8 @@ def _animate_onboard(console, version: str, intro_lines: list[str], *, settings,
             break  # success
         except _SetupRetry:
             console.print()
-            console.print("  [bold]1[/]  [link=https://mdb.ai][anton.cyan]MindsDB Cloud[/][/link] [anton.success](recommended)[/]")
-            console.print("  [bold]2[/]  [anton.cyan]MindsDB Enterprise Server[/]")
+            console.print("  [bold]1[/]  [link=https://mdb.ai][anton.cyan]Minds-Cloud[/][/link] [anton.success](recommended)[/]")
+            console.print("  [bold]2[/]  [anton.cyan]Minds-Enterprise Server[/]")
             console.print("  [bold]3[/]  [anton.cyan]Bring your own key[/] [anton.muted]Anthropic / OpenAI[/]")
             console.print()
             continue
@@ -398,9 +398,9 @@ def _animate_onboard(console, version: str, intro_lines: list[str], *, settings,
     model_label = settings.planning_model
     if provider_label == "openai-compatible":
         if settings.minds_url and "mdb.ai" in settings.minds_url:
-            provider_label = "MindsDB Cloud"
+            provider_label = "Minds-Cloud"
         else:
-            provider_label = "MindsDB Enterprise Server"
+            provider_label = "Minds-Enterprise Server"
         model_label = "smart_router"
     console.print(
         f"  [anton.muted]Provider[/]  [anton.cyan]{provider_label}[/]"
@@ -470,20 +470,24 @@ def _setup_minds(settings, ws, *, default_url: str | None = "https://mdb.ai") ->
 
     console.print()
 
-    minds_url = _setup_prompt("Server URL", default=default_url).strip()
-    if not minds_url.startswith("http://") and not minds_url.startswith("https://"):
-        minds_url = "https://" + minds_url
-    minds_url = minds_url.rstrip("/")
+    is_cloud = default_url == "https://mdb.ai"
 
+    if is_cloud:
+        minds_url = "https://mdb.ai"
+    else:
+        minds_url = _setup_prompt("Server URL", default=default_url).strip()
+        if not minds_url.startswith("http://") and not minds_url.startswith("https://"):
+            minds_url = "https://" + minds_url
+        minds_url = minds_url.rstrip("/")
+
+    console.print("  [anton.muted]If you don't have an API key yet, we'll help you create one — it takes a few seconds.[/]")
+    console.print()
     has_key = Confirm.ask(
-        "  Do you have an API key?",
+        "  Do you have an mdb.ai API key?" if is_cloud else "  Do you have an API key?",
         default=True,
         console=console,
     )
     if not has_key:
-        console.print(
-            "  [anton.muted]No problem — it only takes a few seconds to create one.[/]"
-        )
         webbrowser.open(f"{minds_url}/apiKeys")
         console.print()
 

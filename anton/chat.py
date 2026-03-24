@@ -1221,8 +1221,8 @@ async def _handle_setup_models(
     def _provider_label(provider: str) -> str:
         if provider == "openai-compatible":
             if settings.minds_url and "mdb.ai" in settings.minds_url:
-                return "MindsDB-Cloud"
-            return "MindsDB-Enterprise"
+                return "Minds-Cloud"
+            return "Minds-Enterprise"
         return provider.capitalize()
 
     def _model_label(model: str, role: str) -> str:
@@ -1244,91 +1244,39 @@ async def _handle_setup_models(
         console.print(f"  Coding:   [bold]{coding_display}[/]")
     console.print()
 
-    # --- Provider ---
-    providers = {"1": "anthropic", "2": "openai", "3": "openai-compatible"}
-    current_num = {"anthropic": "1", "openai": "2", "openai-compatible": "3"}.get(settings.planning_provider, "1")
-    console.print("[anton.cyan]Available providers:[/]")
-    console.print(r"  [bold]1[/]  Anthropic (Claude)                    [dim]\[recommended][/]")
-    console.print(r"  [bold]2[/]  OpenAI (GPT / o-series)               [dim]\[experimental][/]")
-    console.print(r"  [bold]3[/]  OpenAI-compatible (custom endpoint)   [dim]\[experimental][/]")
+    # Use the same onboarding flow from cli.py
+    from anton.cli import _setup_minds, _setup_other_provider, _SetupRetry, _setup_prompt
+
+    console.print("  [bold]1[/]  [link=https://mdb.ai][anton.cyan]Minds-Cloud[/][/link] [anton.success](recommended)[/]")
+    console.print("  [bold]2[/]  [anton.cyan]Minds-Enterprise Server[/]")
+    console.print("  [bold]3[/]  [anton.cyan]Bring your own key[/] [anton.muted]Anthropic / OpenAI[/]")
     console.print()
 
-    choice = Prompt.ask(
-        "Select provider",
-        choices=["1", "2", "3"],
-        default=current_num,
-        console=console,
-    )
-    provider = providers[choice]
-
-    # --- Base URL (OpenAI-compatible only) ---
-    if provider == "openai-compatible":
-        current_base_url = settings.openai_base_url or ""
-        console.print()
-        base_url = Prompt.ask(
-            f"API base URL [dim](e.g. http://localhost:11434/v1)[/]",
-            default=current_base_url,
+    while True:
+        choice = Prompt.ask(
+            "Choose LLM Provider",
+            choices=["1", "2", "3"],
+            default="1",
             console=console,
         )
-        base_url = base_url.strip()
-        if base_url:
-            settings.openai_base_url = base_url
-            global_ws.set_secret("ANTON_OPENAI_BASE_URL", base_url)
 
-    # --- API key ---
-    key_attr = "anthropic_api_key" if provider == "anthropic" else "openai_api_key"
-    current_key = getattr(settings, key_attr) or ""
-    masked = current_key[:4] + "..." + current_key[-4:] if len(current_key) > 8 else "***"
-    console.print()
-    api_key = Prompt.ask(
-        f"API key for {provider.title()} [dim](Enter to keep {masked})[/]",
-        default="",
-        console=console,
-    )
-    api_key = api_key.strip()
+        try:
+            if choice == "1":
+                _setup_minds(settings, global_ws)
+            elif choice == "2":
+                _setup_minds(settings, global_ws, default_url=None)
+            else:
+                _setup_other_provider(settings, global_ws)
+            break
+        except _SetupRetry:
+            console.print()
+            console.print("  [bold]1[/]  [link=https://mdb.ai][anton.cyan]Minds-Cloud[/][/link] [anton.success](recommended)[/]")
+            console.print("  [bold]2[/]  [anton.cyan]Minds-Enterprise Server[/]")
+            console.print("  [bold]3[/]  [anton.cyan]Bring your own key[/] [anton.muted]Anthropic / OpenAI[/]")
+            console.print()
+            continue
 
-    # --- Models ---
-    defaults = {
-        "anthropic": ("claude-sonnet-4-6", "claude-haiku-4-5-20251001"),
-        "openai": ("gpt-5-mini", "gpt-5-nano"),
-    }
-    default_planning, default_coding = defaults.get(provider, ("", ""))
-
-    console.print()
-    planning_model = Prompt.ask(
-        "Planning model",
-        default=settings.planning_model if provider == settings.planning_provider else default_planning,
-        console=console,
-    )
-    coding_model = Prompt.ask(
-        "Coding model",
-        default=settings.coding_model if provider == settings.coding_provider else default_coding,
-        console=console,
-    )
-
-    # --- Persist to global ~/.anton/.env ---
-    settings.planning_provider = provider
-    settings.coding_provider = provider
-    settings.planning_model = planning_model
-    settings.coding_model = coding_model
-
-    global_ws.set_secret("ANTON_PLANNING_PROVIDER", provider)
-    global_ws.set_secret("ANTON_CODING_PROVIDER", provider)
-    global_ws.set_secret("ANTON_PLANNING_MODEL", planning_model)
-    global_ws.set_secret("ANTON_CODING_MODEL", coding_model)
-
-    if api_key:
-        setattr(settings, key_attr, api_key)
-        key_name = f"ANTON_{provider.upper()}_API_KEY"
-        global_ws.set_secret(key_name, api_key)
-
-    # Validate that we actually have an API key for the chosen provider
-    final_key = getattr(settings, key_attr)
-    if not final_key:
-        console.print()
-        console.print(f"[anton.error]No API key set for {provider}. Configuration not applied.[/]")
-        console.print()
-        return session
+    global_ws.apply_env_to_process()
 
     console.print()
     console.print("[anton.success]Configuration updated.[/]")
