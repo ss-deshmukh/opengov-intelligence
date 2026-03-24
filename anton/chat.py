@@ -1524,6 +1524,7 @@ async def _handle_setup_models(
     from rich.prompt import Prompt
 
     from anton.workspace import Workspace as _Workspace
+    from anton.cli import _SetupRetry, _setup_minds, _setup_other_provider
 
     # Always persist API keys and model settings to global ~/.anton/.env
     global_ws = _Workspace(Path.home())
