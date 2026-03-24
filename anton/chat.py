@@ -1218,12 +1218,30 @@ async def _handle_setup_models(
     # Always persist API keys and model settings to global ~/.anton/.env
     global_ws = _Workspace(Path.home())
 
+    def _provider_label(provider: str) -> str:
+        if provider == "openai-compatible":
+            if settings.minds_url and "mdb.ai" in settings.minds_url:
+                return "MindsDB-Cloud"
+            return "MindsDB-Enterprise"
+        return provider.capitalize()
+
+    def _model_label(model: str, role: str) -> str:
+        if model in ("_reason_", "_code_"):
+            return f"smart_router({role})"
+        return model
+
+    provider_display = _provider_label(settings.planning_provider)
+    planning_display = _model_label(settings.planning_model, "planning")
+    coding_display = _model_label(settings.coding_model, "coding")
+
     console.print()
     console.print("[anton.cyan]Current configuration:[/]")
-    console.print(f"  Provider (planning): [bold]{settings.planning_provider}[/]")
-    console.print(f"  Provider (coding):   [bold]{settings.coding_provider}[/]")
-    console.print(f"  Planning model:      [bold]{settings.planning_model}[/]")
-    console.print(f"  Coding model:        [bold]{settings.coding_model}[/]")
+    console.print(f"  Provider: [bold]{provider_display}[/]")
+    if planning_display == coding_display:
+        console.print(f"  Model:    [bold]{planning_display}[/]")
+    else:
+        console.print(f"  Planning: [bold]{planning_display}[/]")
+        console.print(f"  Coding:   [bold]{coding_display}[/]")
     console.print()
 
     # --- Provider ---
