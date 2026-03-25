@@ -435,7 +435,7 @@ class _SetupRetry(Exception):
     pass
 
 
-def _setup_prompt(label: str, default: str | None = None) -> str:
+def _setup_prompt(label: str, default: str | None = None, is_password: bool = False) -> str:
     """Prompt for input with ESC-to-go-back and a bottom toolbar hint.
 
     Returns the user's input string.
@@ -472,6 +472,7 @@ def _setup_prompt(label: str, default: str | None = None) -> str:
         bottom_toolbar=_toolbar,
         style=pt_style,
         key_bindings=bindings,
+        is_password=is_password,
     )
 
     # Use async prompt if inside a running event loop, sync otherwise
@@ -531,7 +532,7 @@ def _setup_minds(settings, ws, *, default_url: str | None = "https://mdb.ai") ->
             console.print()
 
     while True:
-        api_key = _setup_prompt("API key")
+        api_key = _setup_prompt("API key", is_password=True)
         if api_key.strip():
             break
         console.print("  [anton.warning]Please enter your API key.[/]")
@@ -636,7 +637,7 @@ def _setup_anthropic(settings, ws) -> None:
 
     console.print()
     while True:
-        api_key = _setup_prompt("API key")
+        api_key = _setup_prompt("API key", is_password=True)
         if api_key.strip():
             break
         console.print("  [anton.warning]Please enter your API key.[/]")
@@ -678,7 +679,7 @@ def _setup_openai(settings, ws) -> None:
 
     console.print()
     while True:
-        api_key = _setup_prompt("API key")
+        api_key = _setup_prompt("API key", is_password=True)
         if api_key.strip():
             break
         console.print("  [anton.warning]Please enter your API key.[/]")
