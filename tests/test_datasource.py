@@ -21,6 +21,7 @@ from anton.chat import (
     _handle_test_datasource,
     _register_secret_vars,
     _restore_namespaced_env,
+    _run_connection_test,
     _scrub_credentials,
     parse_connection_slug,
 )
