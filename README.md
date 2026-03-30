@@ -56,11 +56,11 @@ Summary: Concentration risk is your #1 issue. If you're comfortable being a high
 
 **Key features**
 - **Credential vault** - prevents secrets from being exposed to LLMs.
-- **Isolated execution / scratchpads** - protected, reproducible “show your work” environment.
+- **Isolated code execution** - protected, reproducible “show your work” environment.
 - **Multi-layer memory & continuous learning** - session, semantic and long-term business knowledge.
 
 #### Connect your data
-Although you can use Anton with just public data, the real power is when you combine that with your own data. This can be anything from a file or database to an application API. Open the Local Vault with `/connect` command, then follow the prompts to add your secrets. Anton only has access to secret names - secret values remain hidden.
+Although you can use Anton with just public data, the real power happens when you combine that with your own data. This can be anything from a file or database to an application API. Open the Local Vault with `/connect` command, then follow the prompts to add your secrets. Anton only has access to secret names - secret values remain hidden.
 
 ```powershell
 you> /connect
