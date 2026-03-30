@@ -3810,7 +3810,7 @@ async def _chat_loop(
     # --- Episodic memory ---
     from anton.memory.episodes import EpisodicMemory
 
-    episodes_dir = Path.home() / ".anton" / "episodes"
+    episodes_dir = settings.workspace_path / ".anton" / "episodes"
     episodic = EpisodicMemory(episodes_dir, enabled=settings.episodic_memory)
     if episodic.enabled:
         episodic.start_session()

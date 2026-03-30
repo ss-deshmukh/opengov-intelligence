@@ -335,3 +335,19 @@ class TestDisabled:
         path = episodes_dir / f"{sid}.jsonl"
         lines = path.read_text().strip().splitlines()
         assert len(lines) == 2  # only messages 1 and 3
+
+
+# ---------------------------------------------------------------------------
+# TestWorkspaceIsolation
+# ---------------------------------------------------------------------------
+
+class TestWorkspaceIsolation:
+    def test_recall_isolated_across_workspaces(self, tmp_path: Path):
+        """Episodes logged in workspace A must not appear in workspace B's recall."""
+        em_a = EpisodicMemory(tmp_path / "project_a" / ".anton" / "episodes")
+        em_b = EpisodicMemory(tmp_path / "project_b" / ".anton" / "episodes")
+
+        em_a.start_session()
+        em_a.log_turn(1, "user", "secret project A data")
+
+        assert em_b.recall("secret") == []

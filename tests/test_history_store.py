@@ -185,3 +185,17 @@ def test_save_never_raises(tmp_path: Path) -> None:
     # This would fail if save tried to create dirs and something went wrong,
     # but it should silently succeed or fail without raising
     store.save("20260301_100000", [{"role": "user", "content": "test"}])
+
+
+class TestWorkspaceIsolation:
+    def test_sessions_isolated_across_workspaces(self, tmp_path: Path) -> None:
+        """Sessions saved in workspace A must not appear in workspace B's history."""
+        store_a = HistoryStore(tmp_path / "project_a" / ".anton" / "episodes")
+        store_b = HistoryStore(tmp_path / "project_b" / ".anton" / "episodes")
+
+        store_a.save("20260330_120000", [{"role": "user", "content": "project A session"}])
+
+        assert store_b.list_sessions() == []
+        sessions_a = store_a.list_sessions()
+        assert len(sessions_a) == 1
+        assert sessions_a[0]["preview"] == "project A session"
