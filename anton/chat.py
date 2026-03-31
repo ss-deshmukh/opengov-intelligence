@@ -1726,18 +1726,17 @@ async def _prompt_or_cancel(
     if password:
         suffix = " (hidden): "
     elif choices and default:
-        # Match Rich's Confirm.ask styling: bold magenta choices, bold cyan default
-        opts = "/".join(
-            f"<b><ansimagenta>{c}</ansimagenta></b>" for c in choices
+        # Match Rich's Confirm.ask styling: bold magenta for choices+brackets, bold cyan for default+parens
+        opts = "/".join(choices)
+        suffix = (
+            f" <b><ansimagenta>[{opts}]</ansimagenta></b>"
+            f" <b><ansicyan>({default})</ansicyan></b>: "
         )
-        suffix = f" [{opts}] (<b><ansicyan>{default}</ansicyan></b>): "
     elif choices:
-        opts = "/".join(
-            f"<b><ansimagenta>{c}</ansimagenta></b>" for c in choices
-        )
-        suffix = f" [{opts}]: "
+        opts = "/".join(choices)
+        suffix = f" <b><ansimagenta>[{opts}]</ansimagenta></b>: "
     elif default:
-        suffix = f" (<b><ansicyan>{default}</ansicyan></b>): "
+        suffix = f" <b><ansicyan>({default})</ansicyan></b>: "
     else:
         suffix = ": "
 
