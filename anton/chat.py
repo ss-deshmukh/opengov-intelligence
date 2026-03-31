@@ -1665,7 +1665,7 @@ async def _handle_setup_memory(
         console.print(
             f"  Episodic memory (conversation archive): Currently [bold]{ep_status}[/]"
         )
-        toggle = await _prompt_or_cancel("(anton) Toggle episodic memory? (y/n)", choices=["y", "n"], default="n")
+        toggle = await _prompt_or_cancel("(anton) Toggle episodic memory?", choices=["y", "n"], default="n")
         if toggle is None:
             toggle = "n"
         if toggle == "y":
@@ -1725,8 +1725,21 @@ async def _prompt_or_cancel(
 
     if password:
         suffix = " (hidden): "
+    elif choices and default:
+        # Styled options: pink for choices, blue for default
+        opts = "/".join(
+            f"<ansibrightmagenta>{c}</ansibrightmagenta>" for c in choices
+        )
+        suffix = f" [{opts}] (<ansibrightblue>{default}</ansibrightblue>): "
+    elif choices:
+        opts = "/".join(
+            f"<ansibrightmagenta>{c}</ansibrightmagenta>" for c in choices
+        )
+        suffix = f" [{opts}]: "
+    elif default:
+        suffix = f" (<ansibrightblue>{default}</ansibrightblue>): "
     else:
-        suffix = f" ({default}): " if default else ": "
+        suffix = ": "
 
     pt_session: PromptSession[str] = PromptSession(
         mouse_support=False,
@@ -2783,7 +2796,8 @@ async def _handle_add_custom_datasource(
 
     # Offer help before collecting credentials
     help_answer = await _prompt_or_cancel(
-        "(anton) Need instructions on how to obtain these credentials? (y/n)",
+        "(anton) Need instructions on how to obtain these credentials?",
+        choices=["y", "n"], default="n",
     )
     if help_answer is None:
         return None
@@ -2948,7 +2962,8 @@ async def _run_connection_test(
             console.print(f"        Error: {last_line}")
             console.print()
             retry = await _prompt_or_cancel(
-                "(anton) Would you like to re-enter your credentials? (y/n)",
+                "(anton) Would you like to re-enter your credentials?",
+                choices=["y", "n"], default="n",
             )
             if retry is None or retry.strip().lower() != "y":
                 return False
@@ -3355,7 +3370,8 @@ async def _handle_connect_datasource(
                 if matched_engine is not None:
                     if matched_name.lower() != stripped_answer.lower():
                         confirm = await _prompt_or_cancel(
-                            f'(anton) Did you mean "{matched_name}"? (y/n)',
+                            f'(anton) Did you mean "{matched_name}"?',
+                            choices=["y", "n"], default="y",
                         )
                         if confirm is not None and confirm.strip().lower() == "y":
                             engine_def = matched_engine
@@ -3456,7 +3472,8 @@ async def _handle_connect_datasource(
     console.print()
 
     help_answer = await _prompt_or_cancel(
-        "(anton) Need instructions on how to obtain these credentials? (y/n)",
+        "(anton) Need instructions on how to obtain these credentials?",
+        choices=["y", "n"], default="n",
     )
     if help_answer is None:
         return session
@@ -3646,10 +3663,34 @@ def _handle_list_data_sources(console: Console) -> None:
     console.print()
 
 
-def _handle_remove_data_source(console: Console, slug: str) -> None:
+async def _handle_remove_data_source(console: Console, slug: str) -> None:
     """Delete a connection from the Local Vault by slug (engine-name)."""
     vault = DataVault()
     registry = DatasourceRegistry()
+
+    if not slug:
+        connections = vault.list_connections()
+        if not connections:
+            console.print("[anton.muted]No saved connections to remove.[/]")
+            console.print()
+            return
+        console.print()
+        console.print("[anton.cyan](anton)[/] Which connection do you want to remove?\n")
+        for i, c in enumerate(connections, 1):
+            conn_slug = f"{c['engine']}-{c['name']}"
+            engine_def = registry.get(c["engine"])
+            label = engine_def.display_name if engine_def else c["engine"]
+            console.print(f"          [bold]{i:>2}.[/bold] {conn_slug} [dim]({label})[/]")
+        console.print()
+        choices = [str(i) for i in range(1, len(connections) + 1)]
+        pick = await _prompt_or_cancel("(anton) Enter a number", choices=choices)
+        if pick is None:
+            console.print("[anton.muted]Cancelled.[/]")
+            console.print()
+            return
+        picked = connections[int(pick) - 1]
+        slug = f"{picked['engine']}-{picked['name']}"
+
     _parsed = parse_connection_slug(slug, [e.engine for e in registry.all_engines()], vault=vault)
     if _parsed is None:
         console.print(
@@ -3662,9 +3703,12 @@ def _handle_remove_data_source(console: Console, slug: str) -> None:
         console.print(f"[anton.warning]No connection '{slug}' found.[/]")
         console.print()
         return
-    if Confirm.ask(
-        f"Remove '{slug}' from Local Vault?", default=False, console=console
-    ):
+
+    confirm = await _prompt_or_cancel(
+        f"(anton) Remove '{slug}' from Local Vault?",
+        choices=["y", "n"], default="n",
+    )
+    if confirm is not None and confirm.strip().lower() == "y":
         vault.delete(engine, name)
         _restore_namespaced_env(vault)
         engine_def = registry.get(engine)
@@ -4209,14 +4253,7 @@ async def _chat_loop(
                     continue
                 elif cmd == "/remove":
                     arg = parts[1].strip() if len(parts) > 1 else ""
-                    if not arg:
-                        console.print(
-                            "[anton.warning]Usage: /remove"
-                            " <engine-name>[/]"
-                        )
-                        console.print()
-                    else:
-                        _handle_remove_data_source(console, arg)
+                    await _handle_remove_data_source(console, arg)
                     continue
                 elif cmd == "/edit":
                     arg = parts[1].strip() if len(parts) > 1 else ""
