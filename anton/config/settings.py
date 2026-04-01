@@ -51,6 +51,7 @@ class AntonSettings(BaseSettings):
     disable_autoupdates: bool = False
 
     terms_consent: bool = False
+    first_run_done: bool = False
 
     # Analytics — anonymous usage events (set ANTON_ANALYTICS_ENABLED=false to opt out)
     analytics_enabled: bool = True

@@ -3987,15 +3987,293 @@ class _ClosingSpinner:
             self._live = None
 
 
+_AGENT_ZERO_QUERIES = {
+    "finance": (
+        "I hold 50 AAPL, 200 NVDA, and 10 AMZN. Get today's prices, calculate my "
+        "total portfolio value, show me the 30-day performance of each stock, and "
+        "any other information that might be useful. Give me a complete dashboard."
+    ),
+    "crypto": (
+        "Compare Bitcoin vs NVIDIA stock performance over the past 5 years, month by month. "
+        "Include key milestones, correlation analysis, and volatility comparison. "
+        "Give me a complete interactive dashboard."
+    ),
+    "basketball_marchmadness": (
+        "Give me a full interactive dashboard to determine best odds for the March Madness "
+        "championship from data here: https://docs.google.com/spreadsheets/d/"
+        "1YkcFBG5E2vmnZNxzSngn11W51N_PF7PHLNzVFeU18Jo/edit?usp=sharing"
+    ),
+    "basketball": (
+        "Pull current NBA standings, top scorers, and team stats for this season. "
+        "Build an interactive dashboard with rankings, performance trends, and key matchups."
+    ),
+    "football": (
+        "Pull current NFL team standings, offensive and defensive rankings, and key player stats. "
+        "Build a complete interactive dashboard."
+    ),
+    "soccer": (
+        "Pull current Premier League standings, top scorers, goal difference, and form "
+        "over last 10 matches. Build a complete interactive dashboard."
+    ),
+    "baseball": (
+        "Pull current MLB standings, team batting and pitching stats, and top performers. "
+        "Build a complete interactive dashboard."
+    ),
+    "general": (
+        "Analyze the top 10 tech companies by market cap. Pull current stock prices, "
+        "YTD performance, P/E ratios, and revenue growth. Build a complete interactive "
+        "dashboard comparing them."
+    ),
+}
+
+
+async def _agent_zero(console: Console, session: "ChatSession", settings) -> str | None:
+    """First-run ice-breaker. Returns the hidden demo query to inject, or None if skipped."""
+    from pathlib import Path
+    import datetime
+
+    g = "anton.glow"
+
+    console.print()
+    console.print(f"[{g}]All set with the LLM — let's test that everything works![/]")
+    console.print()
+    console.print(
+        "  We'll start the engines with a question to solve. That way you can see\n"
+        "  it's all working, and I can show you what I'm capable of."
+    )
+    console.print()
+    console.print(
+        "  Tell me a little about yourself — what kind of work do you do? Are you\n"
+        "  into crypto, stock markets, sports? What do you nerd about, boss?"
+    )
+    console.print()
+
+    # Phase 1: Ice-breaker input
+    answer = await _prompt_or_cancel(
+        "(anton) ",
+        allow_cancel=True,
+    )
+    if answer is None:
+        return None  # Esc pressed
+
+    answer = (answer or "").strip()
+    if not answer:
+        return None
+
+    # Classify using LLM
+    try:
+        resp = await session._llm.plan(
+            system="You classify user interests into categories. Reply with ONLY valid JSON.",
+            messages=[{
+                "role": "user",
+                "content": (
+                    f"The user said: {answer!r}\n\n"
+                    "Classify into one of these categories:\n"
+                    '- finance (stocks, trading, investing, portfolio)\n'
+                    '- crypto (bitcoin, ethereum, web3, blockchain)\n'
+                    '- sports (any sport)\n'
+                    '- data (analytics, BI, dashboards, data science)\n'
+                    '- general (anything else)\n\n'
+                    'If sports, also identify which sport if mentioned.\n\n'
+                    'Reply with ONLY JSON like: {"category": "sports", "sport": "basketball"}\n'
+                    'or {"category": "finance", "sport": null}'
+                ),
+            }],
+            max_tokens=64,
+        )
+        import json as _json
+        raw = (resp.content or "").strip()
+        # Extract JSON from possible markdown fences
+        if "```" in raw:
+            raw = raw.split("```")[1].strip()
+            if raw.startswith("json"):
+                raw = raw[4:].strip()
+        classification = _json.loads(raw)
+        category = classification.get("category", "general")
+        sport = classification.get("sport")
+    except Exception:
+        category = "general"
+        sport = None
+
+    # Phase 2: Tailored follow-up
+    demo_key = category
+
+    if category == "sports":
+        # Sport picker
+        if sport and sport.lower() in ("basketball", "hoops", "nba", "march madness"):
+            sport_choice = "basketball"
+        elif sport and sport.lower() in ("football", "nfl"):
+            sport_choice = "football"
+        elif sport and sport.lower() in ("soccer", "football (soccer)", "premier league", "futbol"):
+            sport_choice = "soccer"
+        elif sport and sport.lower() in ("baseball", "mlb"):
+            sport_choice = "baseball"
+        else:
+            console.print()
+            console.print("  [anton.cyan]Nice![/] Which sport are you most into?")
+            console.print()
+            console.print("    [bold]1[/]  Basketball")
+            console.print("    [bold]2[/]  Football (NFL)")
+            console.print("    [bold]3[/]  Soccer")
+            console.print("    [bold]4[/]  Baseball")
+            console.print("    [bold]5[/]  Other — tell me which")
+            console.print()
+
+            pick = await _prompt_or_cancel(
+                "(anton) Enter a number",
+                allow_cancel=True,
+            )
+            if pick is None:
+                return None
+
+            pick = (pick or "").strip()
+            sport_map = {"1": "basketball", "2": "football", "3": "soccer", "4": "baseball"}
+            sport_choice = sport_map.get(pick)
+
+            if sport_choice is None:
+                # "Other" or unrecognized — ask what sport
+                if pick == "5" or pick not in sport_map:
+                    console.print()
+                    other_sport = await _prompt_or_cancel(
+                        "(anton) What sport?",
+                        allow_cancel=True,
+                    )
+                    if other_sport is None:
+                        return None
+                    # Generate a custom query via LLM
+                    try:
+                        qresp = await session._llm.plan(
+                            system=(
+                                "Generate a single question asking for a complete interactive dashboard "
+                                "about the given sport using publicly available data. The question should "
+                                "ask for current standings, stats, and interesting analysis. "
+                                "Reply with ONLY the question text, nothing else."
+                            ),
+                            messages=[{
+                                "role": "user",
+                                "content": f"Sport: {other_sport}",
+                            }],
+                            max_tokens=150,
+                        )
+                        return (qresp.content or "").strip() or None
+                    except Exception:
+                        return _AGENT_ZERO_QUERIES["general"]
+
+        # Date check for March Madness
+        now = datetime.date.today()
+        is_march_madness = sport_choice == "basketball" and now <= datetime.date(now.year, 4, 7)
+
+        if sport_choice == "basketball":
+            if is_march_madness:
+                console.print()
+                console.print(
+                    "  [anton.cyan]It's March Madness right now![/] \U0001f3c0 "
+                    "Want me to analyze who's going to win the championship?"
+                )
+            else:
+                console.print()
+                console.print(
+                    "  [anton.cyan]Great pick![/] Want me to pull current NBA standings "
+                    "and build you a full stats dashboard?"
+                )
+            demo_key = "basketball_marchmadness" if is_march_madness else "basketball"
+        elif sport_choice == "football":
+            console.print()
+            console.print(
+                "  [anton.cyan]Great pick![/] Want me to pull current NFL stats "
+                "and build an interactive dashboard with rankings and matchups?"
+            )
+            demo_key = "football"
+        elif sport_choice == "soccer":
+            console.print()
+            console.print(
+                "  [anton.cyan]Great pick![/] Want me to pull current Premier League standings "
+                "and build a full dashboard?"
+            )
+            demo_key = "soccer"
+        elif sport_choice == "baseball":
+            console.print()
+            console.print(
+                "  [anton.cyan]Great pick![/] Want me to pull current MLB standings and stats "
+                "and build you a dashboard?"
+            )
+            demo_key = "baseball"
+
+    elif category == "finance":
+        console.print()
+        console.print(
+            "  [anton.cyan]Great taste![/] Want me to analyze a stock portfolio for you? "
+            "I can pull live prices, performance charts, and build a full dashboard."
+        )
+    elif category == "crypto":
+        console.print()
+        console.print(
+            "  [anton.cyan]Love it![/] Want me to compare Bitcoin vs some top assets over "
+            "the last few years? I'll build you an interactive dashboard."
+        )
+    elif category == "data":
+        console.print()
+        console.print(
+            "  [anton.cyan]A fellow data person![/] Let me show you what I can do — want me "
+            "to build a sample analytics dashboard from some interesting public data?"
+        )
+    else:
+        console.print()
+        console.print(
+            "  [anton.cyan]Cool![/] Let me show you what I'm capable of — I'll pull some "
+            "interesting data and build you a full interactive dashboard."
+        )
+
+    console.print()
+    confirm = await _prompt_or_cancel(
+        "(anton) Want me to go ahead? (y/n)",
+        choices=["y", "n"],
+        default="y",
+        allow_cancel=True,
+    )
+    if confirm is None or (confirm or "").strip().lower() != "y":
+        if confirm is None:
+            return None
+        console.print()
+        console.print("  [anton.muted]No worries! Just ask me anything when you're ready.[/]")
+        console.print()
+        return None
+
+    console.print()
+    console.print(
+        "  [anton.glow]On it![/] This will take a couple of minutes — I'm fetching live data,\n"
+        "  crunching numbers, and building you a full interactive dashboard.\n"
+        "  Worth the wait, I promise."
+    )
+    console.print()
+
+    return _AGENT_ZERO_QUERIES.get(demo_key, _AGENT_ZERO_QUERIES["general"])
+
+
+def _persist_first_run_done(settings) -> None:
+    """Write ANTON_FIRST_RUN_DONE=true to ~/.anton/.env."""
+    from pathlib import Path
+
+    env_path = Path.home() / ".anton" / ".env"
+    env_path.parent.mkdir(parents=True, exist_ok=True)
+    existing = env_path.read_text() if env_path.is_file() else ""
+    if "ANTON_FIRST_RUN_DONE" not in existing:
+        with env_path.open("a") as f:
+            if existing and not existing.endswith("\n"):
+                f.write("\n")
+            f.write("ANTON_FIRST_RUN_DONE=true\n")
+    settings.first_run_done = True
+
+
 def run_chat(
-    console: Console, settings: AntonSettings, *, resume: bool = False
+    console: Console, settings: AntonSettings, *, resume: bool = False, first_run: bool = False
 ) -> None:
     """Launch the interactive chat REPL."""
-    asyncio.run(_chat_loop(console, settings, resume=resume))
+    asyncio.run(_chat_loop(console, settings, resume=resume, first_run=first_run))
 
 
 async def _chat_loop(
-    console: Console, settings: AntonSettings, *, resume: bool = False
+    console: Console, settings: AntonSettings, *, resume: bool = False, first_run: bool = False
 ) -> None:
     from anton.context.self_awareness import SelfAwarenessContext
     from anton.llm.client import LLMClient
@@ -4105,12 +4383,23 @@ async def _chat_loop(
             current_session_id = resumed_id
 
 
-    console.print("[anton.muted] Chat with me, type '/help' for commands or 'exit' to quit.[/]")
-    console.print(f"[anton.cyan_dim] {'━' * 40}[/]")
-    console.print()
+    # --- Agent Zero: first-run ice-breaker ---
+    _agent_zero_query: str | None = None
+    if first_run and not settings.first_run_done:
+        try:
+            _agent_zero_query = await _agent_zero(console, session, settings)
+        except Exception:
+            pass  # ice-breaker failed — just continue to normal chat
+        _persist_first_run_done(settings)
+
+    if not _agent_zero_query:
+        console.print("[anton.muted] Chat with me, type '/help' for commands or 'exit' to quit.[/]")
+        console.print(f"[anton.cyan_dim] {'━' * 40}[/]")
+        console.print()
 
     from anton.analytics import send_event
     _query_count = 0
+    _total_questions = 0  # tracks first 10 questions for time estimates
 
     from anton.chat_ui import StreamDisplay
 
@@ -4189,14 +4478,19 @@ async def _chat_loop(
                 session._pending_memory_confirmations = []
                 console.print()
 
-            try:
-                from anton.channel.theme import get_palette as _gp
-                _you_color = _gp().user_prompt
-                user_input = await prompt_session.prompt_async(
-                    [(f"bold fg:{_you_color}", "you>"), ("", " ")]
-                )
-            except EOFError:
-                break
+            # Agent Zero: inject the demo query on the first iteration
+            if _agent_zero_query is not None:
+                user_input = _agent_zero_query
+                _agent_zero_query = None  # only once
+            else:
+                try:
+                    from anton.channel.theme import get_palette as _gp
+                    _you_color = _gp().user_prompt
+                    user_input = await prompt_session.prompt_async(
+                        [(f"bold fg:{_you_color}", "you>"), ("", " ")]
+                    )
+                except EOFError:
+                    break
 
             stripped = user_input.strip()
             # message_content holds what we send to the LLM — may be str or
@@ -4372,10 +4666,28 @@ async def _chat_loop(
                 message_content = stripped
 
             _query_count += 1
+            _total_questions += 1
             if _query_count == 1:
                 send_event(settings, "anton_first_query")
             else:
                 send_event(settings, "anton_query")
+
+            # Time estimate for the first 10 questions
+            if _total_questions <= 10:
+                _input_lower = (stripped or "").lower() if isinstance(message_content, str) else str(message_content).lower()
+                _is_dashboard = any(
+                    kw in _input_lower
+                    for kw in ("dashboard", "chart", "visualize", "plot", "graph", "interactive")
+                )
+                if _is_dashboard:
+                    console.print(
+                        "[anton.muted]  This will take a couple of minutes — building your dashboard. Worth the wait![/]"
+                    )
+                else:
+                    console.print(
+                        "[anton.muted]  Working on it — should be ready shortly.[/]"
+                    )
+                console.print()
 
             display.start()
             t0 = time.monotonic()

@@ -305,12 +305,14 @@ def main(
         from anton.chat import run_chat
 
         _ensure_workspace(settings)
+        first_run = False
         if not _has_api_key(settings):
             _onboard(settings)
+            first_run = not settings.first_run_done
         else:
             from anton.channel.branding import render_banner
             render_banner(console)
-        run_chat(console, settings, resume=resume)
+        run_chat(console, settings, resume=resume, first_run=first_run)
 
 
 def _has_api_key(settings) -> bool:
