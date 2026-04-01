@@ -78,7 +78,12 @@ class TestLLMClientFromSettings:
         from anton.llm.anthropic import AnthropicProvider
 
         with patch("anthropic.AsyncAnthropic"):
-            settings = AntonSettings(anthropic_api_key="test-key", _env_file=None)
+            settings = AntonSettings(
+                planning_provider="anthropic",
+                coding_provider="anthropic",
+                anthropic_api_key="test-key",
+                _env_file=None,
+            )
             client = LLMClient.from_settings(settings)
             assert isinstance(client, LLMClient)
             assert isinstance(client._planning_provider, AnthropicProvider)
