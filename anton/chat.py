@@ -4059,12 +4059,6 @@ async def _chat_loop(
     toolbar = {"stats": "", "status": ""}
     display = StreamDisplay(console, toolbar=toolbar)
     last_token_status: TokenLimitInfo | None = None
-    if settings.minds_api_key and settings.minds_url:
-        last_token_status = check_minds_token_limits(
-            settings.minds_url.rstrip("/"),
-            settings.minds_api_key,
-            verify=settings.minds_ssl_verify,
-        )
 
     def _bottom_toolbar():
         stats = toolbar["stats"]
