@@ -667,8 +667,7 @@ def _setup_minds(settings, ws, *, default_url: str | None = "https://mdb.ai") ->
         ws.set_secret("ANTON_CODING_PROVIDER", "openai-compatible")
         ws.set_secret("ANTON_PLANNING_MODEL", "_reason_")
         ws.set_secret("ANTON_CODING_MODEL", "_code_")
-        if not ssl_verify:
-            ws.set_secret("ANTON_MINDS_SSL_VERIFY", "false")
+        ws.set_secret("ANTON_MINDS_SSL_VERIFY", "true" if ssl_verify else "false")
     elif rate_limited:
         console.print("[anton.error]Token limit exceeded. Visit https://mdb.ai to upgrade or to top up your tokens.[/]")
         raise _SetupRetry()
@@ -702,6 +701,11 @@ def _setup_other_provider(settings, ws) -> None:
     else:
         console.print(f"  [anton.warning]Unknown provider '{choice}', using Anthropic.[/]")
         _setup_anthropic(settings, ws)
+    
+    settings.minds_url = None
+    settings.minds_api_key = None
+    ws.set_secret("ANTON_MINDS_URL", "")
+    ws.set_secret("ANTON_MINDS_API_KEY", "")
 
 
 def _validate_with_spinner(console, label: str, fn) -> None:

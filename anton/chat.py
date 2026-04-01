@@ -4077,6 +4077,7 @@ async def _chat_loop(
     toolbar = {"stats": "", "status": ""}
     display = StreamDisplay(console, toolbar=toolbar)
     last_token_status: TokenLimitInfo | None = None
+    print(settings)
     if settings.minds_api_key and settings.minds_url:
         last_token_status = check_minds_token_limits(
             settings.minds_url.rstrip("/"),
@@ -4336,14 +4337,14 @@ async def _chat_loop(
             if message_content is None:
                 message_content = stripped
 
-            if last_token_status is not None and last_token_status.status is TokenLimitStatus.EXCEEDED:
-                pct = int(last_token_status.used / last_token_status.limit * 100) if last_token_status.limit else 100
-                console.print(
-                    f"[anton.error]Token limit reached: {last_token_status.used:,} / {last_token_status.limit:,} tokens used ({pct}%). "
-                    "Visit mdb.ai to upgrade your plan or top up your tokens.[/]"
-                )
-                console.print()
-                continue
+            # if settings.minds_enabled and last_token_status is not None and last_token_status.status is TokenLimitStatus.EXCEEDED:
+            #     pct = int(last_token_status.used / last_token_status.limit * 100) if last_token_status.limit else 100
+            #     console.print(
+            #         f"[anton.error]Token limit reached: {last_token_status.used:,} / {last_token_status.limit:,} tokens used ({pct}%). "
+            #         "Visit mdb.ai to upgrade your plan or top up your tokens.[/]"
+            #     )
+            #     console.print()
+            #     continue
 
             _query_count += 1
             if _query_count == 1:
@@ -4406,7 +4407,7 @@ async def _chat_loop(
                 toolbar["stats"] = "  ".join(parts)
                 toolbar["status"] = ""
                 display.finish()
-                if last_token_status is not None and last_token_status.status is TokenLimitStatus.WARNING:
+                if settings.minds_api_key and settings.minds_url and last_token_status is not None and last_token_status.status is TokenLimitStatus.WARNING:
                     pct = int(last_token_status.used / last_token_status.limit * 100) if last_token_status.limit else 80
                     console.print(
                         f"[anton.warning]Approaching token limit: {last_token_status.used:,} / "
