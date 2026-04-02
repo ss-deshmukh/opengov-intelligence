@@ -4323,7 +4323,7 @@ async def _agent_zero(console: Console, session: "ChatSession", settings) -> str
         console.file.write("\n")
         console.file.flush()
     console.print()
-    console.print("[anton.muted] Ask me follow-ups, a completely different question, or connect your own data.[/]")
+    console.print("[anton.muted] Ask me follow-ups, a completely different question, or connect your own data (using the /connect command).[/]")
     console.print("[anton.muted] What\u2019s next, boss?[/]")
     console.print()
 
