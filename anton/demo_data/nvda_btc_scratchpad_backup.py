@@ -13,6 +13,8 @@ print("Fetching NVDA and BTC monthly data...")
 nvda_raw = yf.download("NVDA",    start="2021-04-01", end="2026-04-30", interval="1mo", auto_adjust=True, progress=False)
 btc_raw  = yf.download("BTC-USD", start="2021-04-01", end="2026-04-30", interval="1mo", auto_adjust=True, progress=False)
 print(f"  NVDA: {nvda_raw.shape}  BTC: {btc_raw.shape}")
+if nvda_raw.empty or btc_raw.empty:
+    raise ValueError(f"Failed to download data: NVDA shape={nvda_raw.shape}, BTC shape={btc_raw.shape}")
 
 # ── 2. BUILD PRICES DATAFRAME ──────────────────────────────────────────────
 nvda = nvda_raw.copy(); btc = btc_raw.copy()
