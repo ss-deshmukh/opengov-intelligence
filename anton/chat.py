@@ -4116,38 +4116,15 @@ async def _agent_zero(console: Console, session: "ChatSession", settings) -> str
         _time.sleep(0.02)
     console.print()
     console.print()
-    console.print("       [anton.muted]Ok to run, or skip straight to chatting?[/]")
     console.print()
 
-    from prompt_toolkit import PromptSession as _PS
-    from prompt_toolkit.key_binding import KeyBindings as _KB
-    from prompt_toolkit.formatted_text import HTML as _HTML
-    from prompt_toolkit.styles import Style as _PTStyle
-    from anton.channel.theme import get_palette as _gp
-
-    _you_color = _gp().user_prompt
-    _esc_pressed = False
-    _bindings = _KB()
-
-    @_bindings.add("escape")
-    def _on_esc(event):
-        nonlocal _esc_pressed
-        _esc_pressed = True
-        event.app.exit(result="")
-
-    _pt_style = _PTStyle.from_dict({"bottom-toolbar": "noreverse nounderline bg:default"})
-
-    def _toolbar():
-        return _HTML("<style fg='#ff69b4'>\u23f5\u23f5 Esc to skip</style>")
-
-    _ps = _PS(mouse_support=False, bottom_toolbar=_toolbar, style=_pt_style, key_bindings=_bindings)
-    try:
-        answer = await _ps.prompt_async(
-            [(f"bold fg:{_you_color}", "you>"), ("", " ")]
-        )
-    except EOFError:
-        return None
-    if _esc_pressed:
+    answer = await _prompt_or_cancel(
+        "(anton) Run analysis, or skip straight to chatting?",
+        choices_display="ok/skip",
+        default="ok",
+        allow_cancel=True,
+    )
+    if answer is None:
         return None
 
     answer_text = (answer or "").strip().lower()
@@ -4750,13 +4727,6 @@ async def _chat_loop(
                 send_event(settings, "anton_first_query")
             else:
                 send_event(settings, "anton_query")
-
-            # Time estimate for the first question
-            if _total_questions == 1:
-                console.print(
-                    "[anton.muted]  This will take a couple of minutes — building your dashboard. Worth the wait![/]"
-                )
-                console.print()
 
             display.start()
             t0 = time.monotonic()
