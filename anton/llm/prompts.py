@@ -193,31 +193,51 @@ supporting charts below.
   - What should be annotated? Key dates, threshold crossings, outliers.
   - What color scheme ties it together? Consistent meaning (green=positive, red=negative) \
 across all charts.
-4. BUILD THE DASHBOARD — always separate data from presentation using two scratchpad cells:
+4. BUILD THE DASHBOARD — use multiple scratchpad cells, but produce ONE single self-contained HTML file:
 
-  CELL A — Export data as JS (programmatic, no HTML):
-  Serialize all computed data (dataframes, metrics, KPIs) into a single JS file. Build a \
+  CRITICAL: The final dashboard MUST be a single .html file with ALL data, CSS, and JS inlined. \
+Do NOT reference external local files (like data.js) — browsers block local file:// cross-references \
+for security reasons and the dashboard will silently fail to load data.
+
+  Build the parts in separate cells, then assemble at the end:
+
+  CELL 1 — Serialize data to a JS string variable (programmatic, no HTML):
+  Serialize all computed data (dataframes, metrics, KPIs) into a Python string. Build a \
 Python dict with keys like "kpis", "tables", "charts" — each containing the relevant data. \
 Convert DataFrames with df.to_dict(orient='records'). Use json.dumps(data, default=str) to \
-handle dates, Decimal, numpy types. Write the result as 'const D = ' + json_string + ';' \
-to .anton/output/dashboard_data.js. This cell is pure mechanical serialization — fast and \
-should never fail.
+handle dates, Decimal, numpy types. Store as a Python variable: \
+`data_js = 'const D = ' + json_string + ';'` — do NOT write to a separate file.
 
-  CELL B — Write HTML that consumes the JS data:
-  Build the HTML template that loads dashboard_data.js via a script tag and renders charts \
-using D.charts.*, D.kpis.*, D.tables.* etc. The HTML is lightweight — no massive data \
-literals inlined. Use ECharts to render charts that reference D.charts.* data. Write the \
-HTML string in Python, save it next to the data file, and open in the browser.
+  CELL 2 — Build CSS + HTML structure as a Python string variable:
+  Write the HTML head (styles, CDN script tags) and body structure (header, KPIs, chart divs, \
+tabs, tables) as a Python string variable `html_body`. This cell builds the template.
 
-  WHY: Large datasets (Monte Carlo, multi-stock histories, sweep analyses) make single-cell \
-dashboard builds fail or timeout. Separating data export (mechanical) from HTML (creative) \
-keeps each cell small and reliable.
+  CELL 3+ — Build JS chart rendering logic as Python string variables:
+  Write the JavaScript that initializes charts, populates tables, handles tabs, etc. \
+Split across multiple cells if needed to avoid token limits. Store as `js_charts` etc.
+
+  FINAL CELL — Assemble and write the single HTML file:
+  Combine: `html = html_body.replace('</body>', f'<script>{{data_js}}{{js_charts}}</script></body>')` \
+or similar. Write to `.anton/output/name.html` and open in browser. ONE file, everything inlined.
+
+  WHY: (1) Browsers block local file:// cross-references — a separate .js file won't load. \
+(2) Splitting the build across cells catches JS/CSS errors early — if a cell has a syntax issue \
+in a string, you'll see it before the final assembly. (3) Large datasets in single cells timeout.
+
+  PYTHON → JS STRING SAFETY (critical):
+  When building JS code inside Python strings, escape sequences get resolved by Python BEFORE \
+writing to the file. This means '\\n' in Python becomes a literal newline in the output, which \
+breaks JavaScript string literals. Rules:
+  - Use '\\\\n' in Python if you need a literal \\n in the JS output
+  - Use raw strings (r"...") for JS code blocks when possible
+  - NEVER use '\\n', '\\t', or '\\\"' inside JS strings within Python — double-escape them
+  - After writing the file, sanity-check that no string literals span multiple lines
 
 Output format:
 - Unless the user explicitly asks for a different format, always output visualizations \
-as polished HTML pages — never raw PNGs or bare image files.
+as polished, single-file HTML pages — never raw PNGs or bare image files.
 - Save output to `.anton/output/` (create it if needed). Use descriptive filenames like \
-`cpi_portfolio.html`, not `output.html`. The data file should match: `cpi_portfolio_data.js`.
+`cpi_portfolio.html`, not `output.html`.
 - Auto-open in the browser using the ABSOLUTE path (use `os.path.abspath()`): \
 `import os, webbrowser; webbrowser.open(f'file://{{os.path.abspath(path)}}')`. \
 Never use a relative path — it will fail on most systems.
