@@ -18,13 +18,21 @@ it pulls and unifies data from multiple sources, runs the analysis, surfaces ins
 
 
 ## Quick start 
+**macOS - Desktop App:**
 
-**macOS / Linux:**
+<a href="https://mindsdb-anton.s3.us-east-2.amazonaws.com/anton-latest-universal-signed.pkg">
+<img width="120" alt="DesktopApp" src="https://github.com/user-attachments/assets/ed7c1e3a-3700-45cc-a9a8-efb57b43dcfd" />
+</a>
+
+ Click [here to download](https://mindsdb-anton.s3.us-east-2.amazonaws.com/anton-latest-universal-signed.pkg) the Anton Desktop App for MacOS.
+
+
+**macOS / Linux - CLI:**
 ```bash
 curl -sSf https://raw.githubusercontent.com/mindsdb/anton/main/install.sh | sh && export PATH="$HOME/.local/bin:$PATH" 
 ```
 
-**Windows** (PowerShell):
+**Windows CLI** (PowerShell):
 ```powershell
 irm https://raw.githubusercontent.com/mindsdb/anton/main/install.ps1 | iex
 ```
