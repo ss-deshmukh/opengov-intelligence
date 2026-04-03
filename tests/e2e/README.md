@@ -3,7 +3,7 @@
 End-to-end tests that run the Anton CLI as a subprocess. Two modes:
 
 - **Stub** (default) — responses served by a local HTTP stub server, no API key needed, fully deterministic.
-- **Live** — real LLM provider, requires a configured API key
+- **Live** — real LLM provider, requires a configured API key.
 
 ## Running
 
@@ -11,19 +11,19 @@ From the repo root:
 
 ```bash
 # Stub mode (fast, no API key)
-python -m pytest scripts/e2e/
+python -m pytest tests/e2e/
 
 # Live mode (real LLM, slower)
-python -m pytest scripts/e2e/ --live
+python -m pytest tests/e2e/ --live
 
 # Single scenario file
-python -m pytest scripts/e2e/scenarios/test_tool_execution.py
+python -m pytest tests/e2e/test_tool_execution.py
 
 # Verbose with test names
-python -m pytest scripts/e2e/ -v
+python -m pytest tests/e2e/ -v
 
 # Stop on first failure
-python -m pytest scripts/e2e/ -x
+python -m pytest tests/e2e/ -x
 ```
 
 ## Stub vs Live
@@ -50,7 +50,7 @@ Live mode inherits your shell environment and applies test-specific overrides (a
 export ANTON_OPENAI_API_KEY=sk-...
 export ANTON_PLANNING_PROVIDER=openai
 export ANTON_CODING_PROVIDER=openai
-python -m pytest scripts/e2e/ --live
+python -m pytest tests/e2e/ --live
 ```
 
 ## Scenarios
