@@ -132,6 +132,7 @@ class ChatSession:
         self._history_store = history_store
         self._session_id = session_id
         self._cancel_event = asyncio.Event()
+        self._escape_watcher: _EscapeWatcher | None = None
         self._active_datasource: str | None = None
         self._scratchpads = ScratchpadManager(
             coding_provider=coding_provider,
@@ -873,12 +874,16 @@ class ChatSession:
                                         description=description,
                                     )
                         elif tc.name == "connect_new_datasource":
-                            # Interactive tool — pause spinner so user can type
+                            # Interactive tool — pause spinner AND escape watcher
                             yield StreamTaskProgress(
                                 phase="connect_datasource",
                                 message="Connecting datasource...",
                             )
+                            if self._escape_watcher:
+                                self._escape_watcher.pause()
                             result_text = await dispatch_tool(self, tc.name, tc.input)
+                            if self._escape_watcher:
+                                self._escape_watcher.resume()
                             # Resume spinner for LLM follow-up
                             yield StreamTaskProgress(
                                 phase="analyzing",
@@ -4008,11 +4013,30 @@ class _EscapeWatcher:
         self._task: asyncio.Task | None = None
         self._old_settings: list | None = None
         self._stop = False
+        self._paused = False
 
     async def __aenter__(self) -> _EscapeWatcher:
         if sys.platform != "win32" and sys.stdin.isatty():
             self._task = asyncio.create_task(self._watch())
         return self
+
+    def pause(self) -> None:
+        """Temporarily restore normal terminal mode for interactive prompts."""
+        if self._paused or self._old_settings is None:
+            return
+        import termios
+        fd = sys.stdin.fileno()
+        termios.tcsetattr(fd, termios.TCSADRAIN, self._old_settings)
+        self._paused = True
+
+    def resume(self) -> None:
+        """Re-enter cbreak mode after interactive prompts."""
+        if not self._paused:
+            return
+        import tty
+        fd = sys.stdin.fileno()
+        tty.setcbreak(fd)
+        self._paused = False
 
     async def __aexit__(self, *exc: object) -> None:
         self._stop = True
@@ -4060,6 +4084,10 @@ class _EscapeWatcher:
             tty.setcbreak(fd)
             loop = asyncio.get_running_loop()
             while not self._stop:
+                # Skip reading while paused (interactive tool running)
+                if self._paused:
+                    await asyncio.sleep(0.1)
+                    continue
                 # Use select with a short timeout so the executor thread
                 # can check the stop flag and exit cleanly — a bare
                 # os.read() blocks forever and survives task cancellation,
@@ -4875,6 +4903,7 @@ async def _chat_loop(
 
             try:
                 async with _EscapeWatcher(on_cancel=display.show_cancelling) as esc:
+                    session._escape_watcher = esc
                     async for event in session.turn_stream(message_content):
                         if esc.cancelled.is_set():
                             session._cancel_event.set()
