@@ -476,7 +476,7 @@ async def handle_connect_datasource(session: ChatSession, tc_input: dict) -> str
         import asyncio
 
         console.print()
-        console.print("[anton.muted]  Connection was cancelled.[/]")
+        console.print("[anton.muted]  No worries, let's continue where we left off.[/]")
         with Live(
             Spinner("dots", text=Text("", style="anton.muted"), style="anton.cyan"),
             console=console,
