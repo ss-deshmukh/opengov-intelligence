@@ -464,7 +464,7 @@ async def _animate_onboard(console, version: str, intro_lines: list[str], *, set
     console.print()
     console.print("  [bold]1[/]  [link=https://mdb.ai][anton.cyan]Minds-Enterprise-Cloud[/][/link] [anton.success](recommended)[/]")
     console.print("  [bold]2[/]  [anton.cyan]Minds-Enterprise-Server[/] [anton.muted]self-hosted[/]")
-    console.print("  [bold]3[/]  [anton.cyan]Bring your own key[/] [anton.muted]Anthropic / OpenAI[/]")
+    console.print("  [bold]3[/]  [anton.cyan]Bring your own key[/] [anton.muted]Anthropic / OpenAI / Gemini[/]")
     console.print()
 
     while True:
@@ -485,7 +485,7 @@ async def _animate_onboard(console, version: str, intro_lines: list[str], *, set
             console.print()
             console.print("  [bold]1[/]  [link=https://mdb.ai][anton.cyan]Minds-Enterprise-Cloud[/][/link] [anton.success](recommended)[/]")
             console.print("  [bold]2[/]  [anton.cyan]Minds-Enterprise-Server[/] [anton.muted]self-hosted[/]")
-            console.print("  [bold]3[/]  [anton.cyan]Bring your own key[/] [anton.muted]Anthropic / OpenAI[/]")
+            console.print("  [bold]3[/]  [anton.cyan]Bring your own key[/] [anton.muted]Anthropic / OpenAI / Gemini[/]")
             console.print()
             continue
 
@@ -687,11 +687,11 @@ def _setup_minds(settings, ws, *, default_url: str | None = "https://mdb.ai") ->
 
 
 def _setup_other_provider(settings, ws) -> None:
-    """Set up Anthropic or OpenAI as the LLM provider."""
+    """Set up Anthropic, OpenAI, or Gemini as the LLM provider."""
     from rich.text import Text
 
     console.print()
-    for label, idx in [("Anthropic", "1"), ("OpenAI", "2")]:
+    for label, idx in [("Anthropic", "1"), ("OpenAI", "2"), ("Google Gemini", "3")]:
         line = Text()
         line.append(f"  {idx} ", style="bold")
         line.append(label, style="anton.cyan")
@@ -704,6 +704,8 @@ def _setup_other_provider(settings, ws) -> None:
         _setup_anthropic(settings, ws)
     elif choice in ("2", "openai"):
         _setup_openai(settings, ws)
+    elif choice in ("3", "gemini", "google"):
+        _setup_gemini(settings, ws)
     else:
         console.print(f"  [anton.warning]Unknown provider '{choice}', using Anthropic.[/]")
         _setup_anthropic(settings, ws)
@@ -839,6 +841,56 @@ def _setup_openai(settings, ws) -> None:
     ws.set_secret("ANTON_OPENAI_API_KEY", api_key)
     ws.set_secret("ANTON_PLANNING_PROVIDER", "openai")
     ws.set_secret("ANTON_CODING_PROVIDER", "openai")
+    ws.set_secret("ANTON_PLANNING_MODEL", model)
+    ws.set_secret("ANTON_CODING_MODEL", model)
+
+
+def _setup_gemini(settings, ws) -> None:
+    """Set up Google Gemini via its OpenAI-compatible endpoint."""
+    import openai
+
+    _GEMINI_BASE_URL = "https://generativelanguage.googleapis.com/v1beta/openai/"
+
+    console.print()
+    console.print("  [anton.muted]Get an API key at[/] [link=https://aistudio.google.com/apikey][anton.cyan]aistudio.google.com/apikey[/][/link]")
+    console.print()
+    while True:
+        api_key = _setup_prompt("API key", is_password=True)
+        if api_key.strip():
+            break
+        console.print("  [anton.warning]Please enter your API key.[/]")
+    api_key = api_key.strip()
+
+    model = _setup_prompt("Model", default="gemini-2.5-flash").strip()
+
+    try:
+        def _test():
+            client = openai.OpenAI(api_key=api_key, base_url=_GEMINI_BASE_URL)
+            response = client.chat.completions.create(**build_chat_completion_kwargs(
+                model=model,
+                messages=[{"role": "user", "content": "Reply with exactly: pong"}],
+                max_tokens=16,
+            ))
+            _validate_openai_probe_response(response)
+
+        _validate_with_spinner(console, model, _test)
+    except openai.AuthenticationError:
+        console.print("  [anton.error]Authentication failed. Check your API key.[/]")
+        _handle_retry(settings, ws, console, retry_fn=_setup_gemini)
+    except Exception as exc:
+        console.print(f"  [anton.error]Failed:[/] {exc}")
+        _handle_retry(settings, ws, console, retry_fn=_setup_gemini)
+
+    settings.openai_api_key = api_key
+    settings.openai_base_url = _GEMINI_BASE_URL
+    settings.planning_provider = "openai-compatible"
+    settings.coding_provider = "openai-compatible"
+    settings.planning_model = model
+    settings.coding_model = model
+    ws.set_secret("ANTON_OPENAI_API_KEY", api_key)
+    ws.set_secret("ANTON_OPENAI_BASE_URL", _GEMINI_BASE_URL)
+    ws.set_secret("ANTON_PLANNING_PROVIDER", "openai-compatible")
+    ws.set_secret("ANTON_CODING_PROVIDER", "openai-compatible")
     ws.set_secret("ANTON_PLANNING_MODEL", model)
     ws.set_secret("ANTON_CODING_MODEL", model)
 
