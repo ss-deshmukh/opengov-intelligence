@@ -3999,8 +3999,6 @@ async def _handle_publish(
     import webbrowser
     from pathlib import Path
 
-    from rich.prompt import Confirm, Prompt
-
     from anton.publisher import publish
 
     console.print()
@@ -4009,12 +4007,16 @@ async def _handle_publish(
     if not settings.minds_api_key:
         console.print("  [anton.muted]To publish dashboards you need a free Minds account.[/]")
         console.print()
-        has_key = Confirm.ask(
+        has_key = await _prompt_or_cancel(
             "  Do you have an mdb.ai API key?",
-            default=True,
-            console=console,
+            choices=["y", "n"],
+            choices_display="y/n",
+            default="y",
         )
-        if not has_key:
+        if has_key is None:
+            console.print()
+            return
+        if has_key.lower() == "n":
             webbrowser.open(
                 "https://mdb.ai/auth/realms/mindsdb/protocol/openid-connect/registrations"
                 "?client_id=public-client&response_type=code&scope=openid"
@@ -4022,11 +4024,10 @@ async def _handle_publish(
             )
             console.print()
 
-        while True:
-            api_key = Prompt.ask("  API key", password=True, console=console)
-            if api_key.strip():
-                break
-            console.print("  [anton.warning]Please enter your API key.[/]")
+        api_key = await _prompt_or_cancel("  API key", password=True)
+        if api_key is None or not api_key.strip():
+            console.print()
+            return
         api_key = api_key.strip()
         settings.minds_api_key = api_key
         if workspace:
@@ -4070,11 +4071,10 @@ async def _handle_publish(
                 console.print(f"\n  [anton.muted]m  Show more ({len(html_files) - offset - PAGE_SIZE} remaining)[/]")
 
             console.print()
-            choice = Prompt.ask(
-                "  Select",
-                default="1",
-                console=console,
-            )
+            choice = await _prompt_or_cancel("  Select", default="1")
+            if choice is None:
+                console.print()
+                return
 
             if choice.strip().lower() == "m" and has_more:
                 offset += PAGE_SIZE
