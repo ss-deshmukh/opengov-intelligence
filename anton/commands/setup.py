@@ -1,5 +1,3 @@
-"""Slash-command handlers for /setup and /memory."""
-
 from __future__ import annotations
 
 from typing import TYPE_CHECKING
