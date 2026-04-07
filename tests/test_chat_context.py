@@ -9,7 +9,7 @@ from unittest.mock import AsyncMock, MagicMock
 import pytest
 
 from anton.chat import ChatSession, _handle_connect
-from anton.minds_client import describe_minds_connection_error as _describe_minds_connection_error
+from anton.minds_client import describe_minds_connection_error
 from anton.config.settings import AntonSettings
 from anton.tools import MEMORIZE_TOOL
 from anton.context.self_awareness import SelfAwarenessContext
@@ -301,7 +301,7 @@ class TestMindsSetupRecovery:
             None,
         )
 
-        headline, advice = _describe_minds_connection_error(error)
+        headline, advice = describe_minds_connection_error(error)
 
         assert headline == "Connection failed (HTTP 401: Unauthorized). The server rejected the request."
         assert "invalid or expired credentials" in advice
@@ -309,7 +309,7 @@ class TestMindsSetupRecovery:
     def test_describe_minds_timeout_is_factual(self):
         error = urllib.error.URLError(socket.timeout("timed out"))
 
-        headline, advice = _describe_minds_connection_error(error)
+        headline, advice = describe_minds_connection_error(error)
 
         assert headline == "Connection failed because the request timed out."
         assert "server is slow or unavailable" in advice
@@ -329,7 +329,7 @@ class TestMindsSetupRecovery:
             return next(prompts)
 
         monkeypatch.setattr("anton.chat.prompt_or_cancel", fake_prompt)
-        monkeypatch.setattr("anton.prompt_utils.prompt_or_cancel", fake_prompt)
+        monkeypatch.setattr("anton.utils.prompt.prompt_or_cancel", fake_prompt)
 
         calls: list[tuple[str, str, bool]] = []
 
@@ -348,7 +348,7 @@ class TestMindsSetupRecovery:
         monkeypatch.setattr("anton.chat.list_minds", fake_list_minds)
         monkeypatch.setattr("anton.chat.test_llm", lambda *args, **kwargs: True)
         rebuilt = object()
-        monkeypatch.setattr("anton.chat._rebuild_session", lambda **kwargs: rebuilt)
+        monkeypatch.setattr("anton.chat.rebuild_session", lambda **kwargs: rebuilt)
 
         workspace_base = tmp_path / "workspace"
         workspace_base.mkdir()
@@ -395,7 +395,7 @@ class TestMindsSetupRecovery:
             return next(prompts)
 
         monkeypatch.setattr("anton.chat.prompt_or_cancel", fake_prompt)
-        monkeypatch.setattr("anton.prompt_utils.prompt_or_cancel", fake_prompt)
+        monkeypatch.setattr("anton.utils.prompt.prompt_or_cancel", fake_prompt)
 
         calls: list[tuple[str, str, bool]] = []
 
@@ -408,7 +408,7 @@ class TestMindsSetupRecovery:
         monkeypatch.setattr("anton.chat.list_minds", fake_list_minds)
         monkeypatch.setattr("anton.chat.test_llm", lambda *args, **kwargs: True)
         rebuilt = object()
-        monkeypatch.setattr("anton.chat._rebuild_session", lambda **kwargs: rebuilt)
+        monkeypatch.setattr("anton.chat.rebuild_session", lambda **kwargs: rebuilt)
 
         workspace_base = tmp_path / "workspace"
         workspace_base.mkdir()

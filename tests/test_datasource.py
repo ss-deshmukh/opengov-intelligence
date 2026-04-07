@@ -11,22 +11,26 @@ from rich.console import Console
 
 from anton.chat import (
     ChatSession,
+)
+from anton.commands.datasource import (
+    _PROMPT_RECONNECT_CANCEL,
+    handle_add_custom_datasource,
+    handle_connect_datasource,
+    handle_test_datasource,
+    run_connection_test,
+    handle_list_data_sources,
+    handle_remove_data_source,
+)
+from anton.utils.datasources import (
     _DS_KNOWN_VARS,
     _DS_SECRET_VARS,
-    _PROMPT_RECONNECT_CANCEL,
-    _build_datasource_context,
-    _handle_add_custom_datasource,
-    _handle_connect_datasource,
-    _handle_list_data_sources,
-    _handle_remove_data_source,
-    _handle_test_datasource,
-    _register_secret_vars,
-    _restore_namespaced_env,
-    _run_connection_test,
-    _scrub_credentials,
+    build_datasource_context,
+    register_secret_vars,
+    restore_namespaced_env,
+    scrub_credentials,
     parse_connection_slug,
 )
-from anton.cli import app as _cli_app
+from anton.cli import app as cli_app
 from anton.data_vault import DataVault, _slug_env_prefix
 from anton.datasource_registry import (
     DatasourceEngine,
@@ -553,7 +557,7 @@ class TestDatasourceRegistryUserOverrides:
 
 
 # ─────────────────────────────────────────────────────────────────────────────
-# _handle_connect_datasource — integration-style (mocked I/O)
+# handle_connect_datasource — integration-style (mocked I/O)
 # ─────────────────────────────────────────────────────────────────────────────
 
 
@@ -569,11 +573,11 @@ class TestHandleConnectDatasource:
         console = MagicMock()
 
         with (
-            patch("anton.chat.DataVault", return_value=DataVault(vault_dir=vault_dir)),
-            patch("anton.chat.DatasourceRegistry", return_value=registry),
-            patch("anton.chat.prompt_or_cancel", return_value="MySQL"),
+            patch("anton.commands.datasource.DataVault", return_value=DataVault(vault_dir=vault_dir)),
+            patch("anton.commands.datasource.DatasourceRegistry", return_value=registry),
+            patch("anton.commands.datasource.prompt_or_cancel", return_value="MySQL"),
         ):
-            result = await _handle_connect_datasource(
+            result = await handle_connect_datasource(
                 console, session._scratchpads, session
             )
 
@@ -589,14 +593,14 @@ class TestHandleConnectDatasource:
         responses = iter(["PostgreSQL", "n", "n", "db.example.com", "", "", "", "", ""])
 
         with (
-            patch("anton.chat.DataVault", return_value=vault),
-            patch("anton.chat.DatasourceRegistry", return_value=registry),
+            patch("anton.commands.datasource.DataVault", return_value=vault),
+            patch("anton.commands.datasource.DatasourceRegistry", return_value=registry),
             patch(
-                "anton.chat.prompt_or_cancel",
+                "anton.commands.datasource.prompt_or_cancel",
                 new=AsyncMock(side_effect=lambda *a, **kw: next(responses)),
             ),
         ):
-            await _handle_connect_datasource(console, session._scratchpads, session)
+            await handle_connect_datasource(console, session._scratchpads, session)
 
         conns = vault.list_connections()
         assert len(conns) == 1
@@ -634,14 +638,14 @@ class TestHandleConnectDatasource:
         )
 
         with (
-            patch("anton.chat.DataVault", return_value=vault),
-            patch("anton.chat.DatasourceRegistry", return_value=registry),
+            patch("anton.commands.datasource.DataVault", return_value=vault),
+            patch("anton.commands.datasource.DatasourceRegistry", return_value=registry),
             patch(
-                "anton.chat.prompt_or_cancel",
+                "anton.commands.datasource.prompt_or_cancel",
                 new=AsyncMock(side_effect=lambda *a, **kw: next(responses)),
             ),
         ):
-            result = await _handle_connect_datasource(
+            result = await handle_connect_datasource(
                 console, session._scratchpads, session
             )
 
@@ -688,14 +692,14 @@ class TestHandleConnectDatasource:
         )
 
         with (
-            patch("anton.chat.DataVault", return_value=vault),
-            patch("anton.chat.DatasourceRegistry", return_value=registry),
+            patch("anton.commands.datasource.DataVault", return_value=vault),
+            patch("anton.commands.datasource.DatasourceRegistry", return_value=registry),
             patch(
-                "anton.chat.prompt_or_cancel",
+                "anton.commands.datasource.prompt_or_cancel",
                 new=AsyncMock(side_effect=lambda *a, **kw: next(responses)),
             ),
         ):
-            await _handle_connect_datasource(console, session._scratchpads, session)
+            await handle_connect_datasource(console, session._scratchpads, session)
 
         conns = vault.list_connections()
         assert len(conns) == 1
@@ -731,14 +735,14 @@ class TestHandleConnectDatasource:
         )
 
         with (
-            patch("anton.chat.DataVault", return_value=vault),
-            patch("anton.chat.DatasourceRegistry", return_value=registry),
+            patch("anton.commands.datasource.DataVault", return_value=vault),
+            patch("anton.commands.datasource.DatasourceRegistry", return_value=registry),
             patch(
-                "anton.chat.prompt_or_cancel",
+                "anton.commands.datasource.prompt_or_cancel",
                 new=AsyncMock(side_effect=lambda *a, **kw: next(responses)),
             ),
         ):
-            result = await _handle_connect_datasource(
+            result = await handle_connect_datasource(
                 console, session._scratchpads, session
             )
 
@@ -772,14 +776,14 @@ class TestHandleConnectDatasource:
         )
 
         with (
-            patch("anton.chat.DataVault", return_value=vault),
-            patch("anton.chat.DatasourceRegistry", return_value=registry),
+            patch("anton.commands.datasource.DataVault", return_value=vault),
+            patch("anton.commands.datasource.DatasourceRegistry", return_value=registry),
             patch(
-                "anton.chat.prompt_or_cancel",
+                "anton.commands.datasource.prompt_or_cancel",
                 new=AsyncMock(side_effect=lambda *a, **kw: next(responses)),
             ),
         ):
-            await _handle_connect_datasource(console, session._scratchpads, session)
+            await handle_connect_datasource(console, session._scratchpads, session)
 
         # name_from=database → name="prod_db" → prefix DS_POSTGRESQL_PROD_DB
         assert os.environ.get("DS_POSTGRESQL_PROD_DB__HOST") == "db.example.com"
@@ -799,14 +803,14 @@ class TestHandleConnectDatasource:
         responses = iter(["HubSpot", "1", "n", "y", "pat-na1-abc123"])
 
         with (
-            patch("anton.chat.DataVault", return_value=vault),
-            patch("anton.chat.DatasourceRegistry", return_value=registry),
+            patch("anton.commands.datasource.DataVault", return_value=vault),
+            patch("anton.commands.datasource.DatasourceRegistry", return_value=registry),
             patch(
-                "anton.chat.prompt_or_cancel",
+                "anton.commands.datasource.prompt_or_cancel",
                 new=AsyncMock(side_effect=lambda *a, **kw: next(responses)),
             ),
         ):
-            await _handle_connect_datasource(console, session._scratchpads, session)
+            await handle_connect_datasource(console, session._scratchpads, session)
 
         conns = vault.list_connections()
         assert len(conns) == 1
@@ -841,14 +845,14 @@ class TestHandleConnectDatasource:
         )
 
         with (
-            patch("anton.chat.DataVault", return_value=vault),
-            patch("anton.chat.DatasourceRegistry", return_value=registry),
+            patch("anton.commands.datasource.DataVault", return_value=vault),
+            patch("anton.commands.datasource.DatasourceRegistry", return_value=registry),
             patch(
-                "anton.chat.prompt_or_cancel",
+                "anton.commands.datasource.prompt_or_cancel",
                 new=AsyncMock(side_effect=lambda *a, **kw: next(responses)),
             ),
         ):
-            await _handle_connect_datasource(console, session._scratchpads, session)
+            await handle_connect_datasource(console, session._scratchpads, session)
 
         conns = vault.list_connections()
         assert len(conns) == 1
@@ -864,7 +868,7 @@ class TestCredentialScrubbing:
         """Secret fields are added to _DS_SECRET_VARS; non-secret fields are not."""
         pg = registry.get("postgresql")
         assert pg is not None
-        _register_secret_vars(pg)
+        register_secret_vars(pg)
         assert "DS_PASSWORD" in _DS_SECRET_VARS
         assert "DS_HOST" not in _DS_SECRET_VARS
         assert "DS_PORT" not in _DS_SECRET_VARS
@@ -873,7 +877,7 @@ class TestCredentialScrubbing:
         """A registered secret value is replaced with its placeholder."""
         _DS_SECRET_VARS.add("DS_ACCESS_TOKEN")
         monkeypatch.setenv("DS_ACCESS_TOKEN", "supersecrettoken123")
-        result = _scrub_credentials("token is supersecrettoken123 here")
+        result = scrub_credentials("token is supersecrettoken123 here")
         assert "supersecrettoken123" not in result
         assert "[DS_ACCESS_TOKEN]" in result
 
@@ -881,10 +885,10 @@ class TestCredentialScrubbing:
         """Non-secret DS_* values (host, port) are left untouched."""
         pg = registry.get("postgresql")
         assert pg is not None
-        _register_secret_vars(pg)
+        register_secret_vars(pg)
         monkeypatch.setenv("DS_HOST", "mydbhostname")
         monkeypatch.setenv("DS_PASSWORD", "s3cr3tpassword99")
-        result = _scrub_credentials("host=mydbhostname pass=s3cr3tpassword99")
+        result = scrub_credentials("host=mydbhostname pass=s3cr3tpassword99")
         assert "mydbhostname" in result
         assert "s3cr3tpassword99" not in result
         assert "[DS_PASSWORD]" in result
@@ -893,14 +897,14 @@ class TestCredentialScrubbing:
         """Registered secrets are always scrubbed regardless of length."""
         _DS_SECRET_VARS.add("DS_PASSWORD")
         monkeypatch.setenv("DS_PASSWORD", "short")
-        result = _scrub_credentials("password=short")
+        result = scrub_credentials("password=short")
         assert "short" not in result
         assert "[DS_PASSWORD]" in result
 
     def test_scrub_fallback_redacts_unknown_long_ds_vars(self, monkeypatch):
         """Long DS_* vars not in _DS_SECRET_VARS are scrubbed as a safety fallback."""
         monkeypatch.setenv("DS_WEBHOOK_SECRET", "wh_sec_abcdefgh1234")
-        result = _scrub_credentials("secret=wh_sec_abcdefgh1234 here")
+        result = scrub_credentials("secret=wh_sec_abcdefgh1234 here")
         assert "wh_sec_abcdefgh1234" not in result
         assert "[DS_WEBHOOK_SECRET]" in result
 
@@ -933,50 +937,50 @@ class TestCredentialScrubbing:
         )
 
         with (
-            patch("anton.chat.DataVault", return_value=vault),
-            patch("anton.chat.DatasourceRegistry", return_value=registry),
+            patch("anton.commands.datasource.DataVault", return_value=vault),
+            patch("anton.commands.datasource.DatasourceRegistry", return_value=registry),
             patch(
-                "anton.chat.prompt_or_cancel",
+                "anton.commands.datasource.prompt_or_cancel",
                 new=AsyncMock(side_effect=lambda *a, **kw: next(responses)),
             ),
         ):
-            await _handle_connect_datasource(MagicMock(), session._scratchpads, session)
+            await handle_connect_datasource(MagicMock(), session._scratchpads, session)
 
         # name_from=database → name="mydb" → DS_POSTGRESQL_MYDB__PASSWORD
         namespaced_pw_var = "DS_POSTGRESQL_MYDB__PASSWORD"
         assert namespaced_pw_var in _DS_SECRET_VARS
         monkeypatch.setenv(namespaced_pw_var, secret_pw)
-        result = _scrub_credentials(f"error: auth failed with {secret_pw}")
+        result = scrub_credentials(f"error: auth failed with {secret_pw}")
         assert secret_pw not in result
         assert f"[{namespaced_pw_var}]" in result
 
     def test_register_with_slug_uses_namespaced_keys(self, registry):
         pg = registry.get("postgresql")
-        _register_secret_vars(pg, engine="postgresql", name="prod_db")
+        register_secret_vars(pg, engine="postgresql", name="prod_db")
         assert "DS_POSTGRESQL_PROD_DB__PASSWORD" in _DS_SECRET_VARS
         assert "DS_POSTGRESQL_PROD_DB__HOST" not in _DS_SECRET_VARS
         assert "DS_POSTGRESQL_PROD_DB__HOST" in _DS_KNOWN_VARS
 
     def test_register_without_slug_uses_flat_keys(self, registry):
         pg = registry.get("postgresql")
-        _register_secret_vars(pg)  # no engine/name → flat mode
+        register_secret_vars(pg)  # no engine/name → flat mode
         assert "DS_PASSWORD" in _DS_SECRET_VARS
         assert "DS_HOST" not in _DS_SECRET_VARS
 
     def test_scrub_replaces_namespaced_secret_value(self, registry, monkeypatch):
         pg = registry.get("postgresql")
-        _register_secret_vars(pg, engine="postgresql", name="prod_db")
+        register_secret_vars(pg, engine="postgresql", name="prod_db")
         secret = "namespacedpassword123"
         monkeypatch.setenv("DS_POSTGRESQL_PROD_DB__PASSWORD", secret)
-        result = _scrub_credentials(f"error: {secret}")
+        result = scrub_credentials(f"error: {secret}")
         assert secret not in result
         assert "[DS_POSTGRESQL_PROD_DB__PASSWORD]" in result
 
     def test_scrub_leaves_namespaced_non_secret_readable(self, registry, monkeypatch):
         pg = registry.get("postgresql")
-        _register_secret_vars(pg, engine="postgresql", name="prod_db")
+        register_secret_vars(pg, engine="postgresql", name="prod_db")
         monkeypatch.setenv("DS_POSTGRESQL_PROD_DB__HOST", "mydbhostname")
-        result = _scrub_credentials("host=mydbhostname")
+        result = scrub_credentials("host=mydbhostname")
         assert "mydbhostname" in result
 
 
@@ -997,10 +1001,10 @@ class TestActiveDatasourceScoping:
         console = MagicMock()
 
         with (
-            patch("anton.chat.DataVault", return_value=vault),
-            patch("anton.chat.DatasourceRegistry"),
+            patch("anton.commands.datasource.DataVault", return_value=vault),
+            patch("anton.commands.datasource.DatasourceRegistry"),
         ):
-            result = await _handle_connect_datasource(
+            result = await handle_connect_datasource(
                 console, session._scratchpads, session, prefill="hubspot-2"
             )
 
@@ -1028,10 +1032,10 @@ class TestActiveDatasourceScoping:
         console = MagicMock()
 
         with (
-            patch("anton.chat.DataVault", return_value=vault),
-            patch("anton.chat.DatasourceRegistry"),
+            patch("anton.commands.datasource.DataVault", return_value=vault),
+            patch("anton.commands.datasource.DatasourceRegistry"),
         ):
-            result = await _handle_connect_datasource(
+            result = await handle_connect_datasource(
                 console, session._scratchpads, session, prefill="hubspot-2"
             )
 
@@ -1047,8 +1051,8 @@ class TestActiveDatasourceScoping:
         vault.save("oracle", "1", {"host": "oracle.host"})
         vault.save("hubspot", "2", {"access_token": "pat-xxx"})
 
-        with patch("anton.chat.DataVault", return_value=vault):
-            ctx = _build_datasource_context()
+        with patch("anton.utils.datasources.DataVault", return_value=vault):
+            ctx = build_datasource_context()
 
         assert "oracle-1" in ctx
         assert "hubspot-2" in ctx
@@ -1059,8 +1063,8 @@ class TestActiveDatasourceScoping:
         vault.save("oracle", "1", {"host": "oracle.host"})
         vault.save("hubspot", "2", {"access_token": "pat-xxx"})
 
-        with patch("anton.chat.DataVault", return_value=vault):
-            ctx = _build_datasource_context(active_only="hubspot-2")
+        with patch("anton.utils.datasources.DataVault", return_value=vault):
+            ctx = build_datasource_context(active_only="hubspot-2")
 
         assert "hubspot-2" in ctx
         assert "oracle-1" not in ctx
@@ -1070,8 +1074,8 @@ class TestActiveDatasourceScoping:
         vault = DataVault(vault_dir=vault_dir)
         vault.save("oracle", "1", {"host": "oracle.host"})
 
-        with patch("anton.chat.DataVault", return_value=vault):
-            ctx = _build_datasource_context(active_only="hubspot-99")
+        with patch("anton.utils.datasources.DataVault", return_value=vault):
+            ctx = build_datasource_context(active_only="hubspot-99")
 
         assert "oracle-1" not in ctx
 
@@ -1081,8 +1085,8 @@ class TestActiveDatasourceScoping:
             "postgres", "prod_db", {"host": "pg.example.com", "password": "s3cr3t"}
         )
 
-        with patch("anton.chat.DataVault", return_value=vault):
-            ctx = _build_datasource_context()
+        with patch("anton.utils.datasources.DataVault", return_value=vault):
+            ctx = build_datasource_context()
 
         assert "DS_POSTGRES_PROD_DB__HOST" in ctx
         assert "DS_POSTGRES_PROD_DB__PASSWORD" in ctx
@@ -1092,8 +1096,8 @@ class TestActiveDatasourceScoping:
         vault = DataVault(vault_dir=vault_dir)
         vault.save("postgres", "prod_db", {"host": "pg.example.com"})
 
-        with patch("anton.chat.DataVault", return_value=vault):
-            ctx = _build_datasource_context()
+        with patch("anton.utils.datasources.DataVault", return_value=vault):
+            ctx = build_datasource_context()
 
         assert "postgres-prod_db" in ctx
         assert "(postgres)" in ctx
@@ -1104,8 +1108,8 @@ class TestActiveDatasourceScoping:
         vault.save("postgres", "prod_db", {"host": "pg.example.com"})
         vault.save("hubspot", "main", {"access_token": "pat-abc"})
 
-        with patch("anton.chat.DataVault", return_value=vault):
-            ctx = _build_datasource_context()
+        with patch("anton.utils.datasources.DataVault", return_value=vault):
+            ctx = build_datasource_context()
 
         assert "postgres-prod_db" in ctx
         assert "DS_POSTGRES_PROD_DB__HOST" in ctx
@@ -1125,15 +1129,15 @@ class TestCliCommandRegistration:
         ],
     )
     def test_command_registered(self, cmd_name):
-        names = [cmd.name for cmd in _cli_app.registered_commands]
+        names = [cmd.name for cmd in cli_app.registered_commands]
         assert cmd_name in names
 
 
 class TestHandleListDataSources:
     def test_empty_vault_shows_message(self, vault_dir):
         console = MagicMock()
-        with patch("anton.chat.DataVault", return_value=DataVault(vault_dir=vault_dir)):
-            _handle_list_data_sources(console)
+        with patch("anton.commands.datasource.DataVault", return_value=DataVault(vault_dir=vault_dir)):
+            handle_list_data_sources(console)
         printed = " ".join(str(c) for c in console.print.call_args_list)
         assert "No data sources" in printed or "connect" in printed
 
@@ -1157,10 +1161,10 @@ class TestHandleListDataSources:
         rich_console = Console(file=buf, highlight=False, markup=False)
 
         with (
-            patch("anton.chat.DataVault", return_value=vault),
-            patch("anton.chat.DatasourceRegistry", return_value=registry),
+            patch("anton.commands.datasource.DataVault", return_value=vault),
+            patch("anton.commands.datasource.DatasourceRegistry", return_value=registry),
         ):
-            _handle_list_data_sources(rich_console)
+            handle_list_data_sources(rich_console)
 
         output = buf.getvalue()
         assert "postgresql-prod_db" in output
@@ -1176,10 +1180,10 @@ class TestHandleListDataSources:
         rich_console = Console(file=buf, highlight=False, markup=False)
 
         with (
-            patch("anton.chat.DataVault", return_value=vault),
-            patch("anton.chat.DatasourceRegistry", return_value=registry),
+            patch("anton.commands.datasource.DataVault", return_value=vault),
+            patch("anton.commands.datasource.DatasourceRegistry", return_value=registry),
         ):
-            _handle_list_data_sources(rich_console)
+            handle_list_data_sources(rich_console)
 
         output = buf.getvalue()
         assert "incomplete" in output.lower()
@@ -1206,10 +1210,10 @@ class TestHandleTestDatasource:
         scratchpads.get_or_create = AsyncMock(return_value=pad)
 
         with (
-            patch("anton.chat.DataVault", return_value=vault),
-            patch("anton.chat.DatasourceRegistry", return_value=registry),
+            patch("anton.commands.datasource.DataVault", return_value=vault),
+            patch("anton.commands.datasource.DatasourceRegistry", return_value=registry),
         ):
-            await _handle_test_datasource(console, scratchpads, "postgresql-prod_db")
+            await handle_test_datasource(console, scratchpads, "postgresql-prod_db")
 
         printed = " ".join(str(c) for c in console.print.call_args_list)
         assert "✓" in printed or "passed" in printed.lower()
@@ -1234,10 +1238,10 @@ class TestHandleTestDatasource:
         scratchpads.get_or_create = AsyncMock(return_value=pad)
 
         with (
-            patch("anton.chat.DataVault", return_value=vault),
-            patch("anton.chat.DatasourceRegistry", return_value=registry),
+            patch("anton.commands.datasource.DataVault", return_value=vault),
+            patch("anton.commands.datasource.DatasourceRegistry", return_value=registry),
         ):
-            await _handle_test_datasource(console, scratchpads, "postgresql-prod_db")
+            await handle_test_datasource(console, scratchpads, "postgresql-prod_db")
 
         printed = " ".join(str(c) for c in console.print.call_args_list)
         assert "✗" in printed or "failed" in printed.lower()
@@ -1249,10 +1253,10 @@ class TestHandleTestDatasource:
         scratchpads = AsyncMock()
 
         with (
-            patch("anton.chat.DataVault", return_value=vault),
-            patch("anton.chat.DatasourceRegistry", return_value=registry),
+            patch("anton.commands.datasource.DataVault", return_value=vault),
+            patch("anton.commands.datasource.DatasourceRegistry", return_value=registry),
         ):
-            await _handle_test_datasource(console, scratchpads, "postgresql-ghost")
+            await handle_test_datasource(console, scratchpads, "postgresql-ghost")
 
         printed = " ".join(str(c) for c in console.print.call_args_list)
         assert "not found" in printed.lower() or "No connection" in printed
@@ -1263,10 +1267,10 @@ class TestHandleTestDatasource:
         scratchpads = AsyncMock()
 
         with (
-            patch("anton.chat.DataVault", return_value=DataVault(vault_dir=vault_dir)),
-            patch("anton.chat.DatasourceRegistry", return_value=registry),
+            patch("anton.commands.datasource.DataVault", return_value=DataVault(vault_dir=vault_dir)),
+            patch("anton.commands.datasource.DatasourceRegistry", return_value=registry),
         ):
-            await _handle_test_datasource(console, scratchpads, "")
+            await handle_test_datasource(console, scratchpads, "")
 
         printed = " ".join(str(c) for c in console.print.call_args_list)
         assert "Usage" in printed or "test" in printed
@@ -1308,14 +1312,14 @@ class TestEditDatasourceFlow:
         )
 
         with (
-            patch("anton.chat.DataVault", return_value=vault),
-            patch("anton.chat.DatasourceRegistry", return_value=registry),
+            patch("anton.commands.datasource.DataVault", return_value=vault),
+            patch("anton.commands.datasource.DatasourceRegistry", return_value=registry),
             patch(
-                "anton.chat.prompt_or_cancel",
+                "anton.commands.datasource.prompt_or_cancel",
                 new=AsyncMock(side_effect=lambda *a, **kw: next(prompt_values)),
             ),
         ):
-            await _handle_connect_datasource(
+            await handle_connect_datasource(
                 console,
                 session._scratchpads,
                 session,
@@ -1363,14 +1367,14 @@ class TestEditDatasourceFlow:
         )
 
         with (
-            patch("anton.chat.DataVault", return_value=vault),
-            patch("anton.chat.DatasourceRegistry", return_value=registry),
+            patch("anton.commands.datasource.DataVault", return_value=vault),
+            patch("anton.commands.datasource.DatasourceRegistry", return_value=registry),
             patch(
-                "anton.chat.prompt_or_cancel",
+                "anton.commands.datasource.prompt_or_cancel",
                 new=AsyncMock(side_effect=lambda *a, **kw: next(prompt_values)),
             ),
         ):
-            await _handle_connect_datasource(
+            await handle_connect_datasource(
                 console,
                 session._scratchpads,
                 session,
@@ -1391,10 +1395,10 @@ class TestEditDatasourceFlow:
         console = MagicMock()
 
         with (
-            patch("anton.chat.DataVault", return_value=vault),
-            patch("anton.chat.DatasourceRegistry", return_value=registry),
+            patch("anton.commands.datasource.DataVault", return_value=vault),
+            patch("anton.commands.datasource.DatasourceRegistry", return_value=registry),
         ):
-            result = await _handle_connect_datasource(
+            result = await handle_connect_datasource(
                 console,
                 session._scratchpads,
                 session,
@@ -1413,11 +1417,11 @@ class TestRemoveDatasourceFlow:
         console = Console(quiet=True)
 
         with (
-            patch("anton.chat.DataVault", return_value=vault),
-            patch("anton.chat.DatasourceRegistry", return_value=registry),
-            patch("anton.chat.prompt_or_cancel", new=AsyncMock(return_value="y")),
+            patch("anton.commands.datasource.DataVault", return_value=vault),
+            patch("anton.commands.datasource.DatasourceRegistry", return_value=registry),
+            patch("anton.commands.datasource.prompt_or_cancel", new=AsyncMock(return_value="y")),
         ):
-            await _handle_remove_data_source(console, "postgresql-prod_db")
+            await handle_remove_data_source(console, "postgresql-prod_db")
 
         assert vault.load("postgresql", "prod_db") is None
 
@@ -1427,11 +1431,11 @@ class TestRemoveDatasourceFlow:
         console = Console(quiet=True)
 
         with (
-            patch("anton.chat.DataVault", return_value=vault),
-            patch("anton.chat.DatasourceRegistry", return_value=registry),
-            patch("anton.chat.prompt_or_cancel", new=AsyncMock(return_value="n")),
+            patch("anton.commands.datasource.DataVault", return_value=vault),
+            patch("anton.commands.datasource.DatasourceRegistry", return_value=registry),
+            patch("anton.commands.datasource.prompt_or_cancel", new=AsyncMock(return_value="n")),
         ):
-            await _handle_remove_data_source(console, "postgresql-prod_db")
+            await handle_remove_data_source(console, "postgresql-prod_db")
 
         assert vault.load("postgresql", "prod_db") is not None
 
@@ -1441,10 +1445,10 @@ class TestRemoveDatasourceFlow:
         console = MagicMock()
 
         with (
-            patch("anton.chat.DataVault", return_value=vault),
-            patch("anton.chat.DatasourceRegistry", return_value=registry),
+            patch("anton.commands.datasource.DataVault", return_value=vault),
+            patch("anton.commands.datasource.DatasourceRegistry", return_value=registry),
         ):
-            await _handle_remove_data_source(console, "postgresql-ghost")
+            await handle_remove_data_source(console, "postgresql-ghost")
 
         printed = " ".join(str(c) for c in console.print.call_args_list)
         assert "not found" in printed.lower() or "No connection" in printed
@@ -1454,8 +1458,8 @@ class TestRemoveDatasourceFlow:
         vault = DataVault(vault_dir=vault_dir)
         console = MagicMock()
 
-        with patch("anton.chat.DataVault", return_value=vault):
-            await _handle_remove_data_source(console, "nohyphen")
+        with patch("anton.commands.datasource.DataVault", return_value=vault):
+            await handle_remove_data_source(console, "nohyphen")
 
         printed = " ".join(str(c) for c in console.print.call_args_list)
         assert "Invalid" in printed or "engine-name" in printed
@@ -1490,14 +1494,14 @@ class TestEnvActivationCollisionFree:
         )
 
         with (
-            patch("anton.chat.DataVault", return_value=vault),
-            patch("anton.chat.DatasourceRegistry", return_value=registry),
+            patch("anton.commands.datasource.DataVault", return_value=vault),
+            patch("anton.commands.datasource.DatasourceRegistry", return_value=registry),
             patch(
-                "anton.chat.prompt_or_cancel",
+                "anton.commands.datasource.prompt_or_cancel",
                 new=AsyncMock(side_effect=lambda *a, **kw: next(responses)),
             ),
         ):
-            await _handle_connect_datasource(console, session._scratchpads, session)
+            await handle_connect_datasource(console, session._scratchpads, session)
 
         assert "DS_ACCESS_TOKEN" not in os.environ
         assert os.environ.get("DS_POSTGRESQL_PROD_DB__HOST") == "db.example.com"
@@ -1535,10 +1539,10 @@ class TestEnvActivationCollisionFree:
         console = MagicMock()
 
         with (
-            patch("anton.chat.DataVault", return_value=vault),
-            patch("anton.chat.DatasourceRegistry", return_value=registry),
+            patch("anton.commands.datasource.DataVault", return_value=vault),
+            patch("anton.commands.datasource.DatasourceRegistry", return_value=registry),
         ):
-            await _handle_connect_datasource(
+            await handle_connect_datasource(
                 console,
                 session._scratchpads,
                 session,
@@ -1558,10 +1562,10 @@ class TestDatasourceSlashCommandBehavior:
         scratchpads = AsyncMock()
 
         with (
-            patch("anton.chat.DataVault", return_value=DataVault(vault_dir=vault_dir)),
-            patch("anton.chat.DatasourceRegistry", return_value=registry),
+            patch("anton.commands.datasource.DataVault", return_value=DataVault(vault_dir=vault_dir)),
+            patch("anton.commands.datasource.DatasourceRegistry", return_value=registry),
         ):
-            await _handle_test_datasource(console, scratchpads, "")
+            await handle_test_datasource(console, scratchpads, "")
 
         printed = " ".join(str(c) for c in console.print.call_args_list)
         assert "Usage" in printed or "test" in printed
@@ -1575,11 +1579,11 @@ class TestDatasourceSlashCommandBehavior:
         console = MagicMock()
 
         with (
-            patch("anton.chat.DataVault", return_value=DataVault(vault_dir=vault_dir)),
-            patch("anton.chat.DatasourceRegistry", return_value=registry),
-            patch("anton.chat.prompt_or_cancel", return_value="UnknownEngine"),
+            patch("anton.commands.datasource.DataVault", return_value=DataVault(vault_dir=vault_dir)),
+            patch("anton.commands.datasource.DatasourceRegistry", return_value=registry),
+            patch("anton.commands.datasource.prompt_or_cancel", return_value="UnknownEngine"),
         ):
-            updated = await _handle_connect_datasource(
+            updated = await handle_connect_datasource(
                 console,
                 session._scratchpads,
                 session,
@@ -1684,8 +1688,8 @@ class TestTemporaryFlatExecution:
         assert os.environ.get("DS_HOST") == "analytics.example.com"
         assert "DS_POSTGRES_ANALYTICS__HOST" not in os.environ
 
-        with patch("anton.chat.DataVault", return_value=vault):
-            _restore_namespaced_env(vault)
+        with patch("anton.utils.datasources.DataVault", return_value=vault):
+            restore_namespaced_env(vault)
 
         assert "DS_HOST" not in os.environ
         assert os.environ.get("DS_POSTGRES_ANALYTICS__HOST") == "analytics.example.com"
@@ -1698,8 +1702,8 @@ class TestTemporaryFlatExecution:
 
         vault.inject_env("postgres", "prod_db", flat=True)
 
-        with patch("anton.chat.DataVault", return_value=vault):
-            _restore_namespaced_env(vault)
+        with patch("anton.utils.datasources.DataVault", return_value=vault):
+            restore_namespaced_env(vault)
 
         assert "DS_HOST" not in os.environ
         assert os.environ.get("DS_POSTGRES_PROD_DB__HOST") == "prod.example.com"
@@ -1709,7 +1713,7 @@ class TestTemporaryFlatExecution:
     async def test_test_datasource_injects_flat_then_restores_namespaced(
         self, vault_dir, registry, make_pad
     ):
-        """_handle_test_datasource uses flat vars during snippet, then restores namespaced."""
+        """handle_test_datasource uses flat vars during snippet, then restores namespaced."""
         vault = DataVault(vault_dir=vault_dir)
         vault.save(
             "postgresql",
@@ -1742,10 +1746,10 @@ class TestTemporaryFlatExecution:
         scratchpads.get_or_create = AsyncMock(return_value=pad)
 
         with (
-            patch("anton.chat.DataVault", return_value=vault),
-            patch("anton.chat.DatasourceRegistry", return_value=registry),
+            patch("anton.commands.datasource.DataVault", return_value=vault),
+            patch("anton.commands.datasource.DatasourceRegistry", return_value=registry),
         ):
-            await _handle_test_datasource(
+            await handle_test_datasource(
                 MagicMock(), scratchpads, "postgresql-prod_db"
             )
 
@@ -1778,9 +1782,9 @@ class TestStaleDsRegistrationState:
         )
 
         with patch(
-            "anton.datasource_registry.DatasourceRegistry", return_value=registry
+            "anton.utils.datasources.DatasourceRegistry", return_value=registry
         ):
-            _restore_namespaced_env(vault)
+            restore_namespaced_env(vault)
 
         assert "DS_POSTGRESQL_PROD_DB__PASSWORD" in _DS_SECRET_VARS
         assert "DS_POSTGRESQL_PROD_DB__PASSWORD" in _DS_KNOWN_VARS
@@ -1788,9 +1792,9 @@ class TestStaleDsRegistrationState:
         vault.delete("postgresql", "prod_db")
 
         with patch(
-            "anton.datasource_registry.DatasourceRegistry", return_value=registry
+            "anton.utils.datasources.DatasourceRegistry", return_value=registry
         ):
-            _restore_namespaced_env(vault)
+            restore_namespaced_env(vault)
 
         assert "DS_POSTGRESQL_PROD_DB__PASSWORD" not in _DS_SECRET_VARS
         assert "DS_POSTGRESQL_PROD_DB__PASSWORD" not in _DS_KNOWN_VARS
@@ -1811,9 +1815,9 @@ class TestStaleDsRegistrationState:
         )
 
         with patch(
-            "anton.datasource_registry.DatasourceRegistry", return_value=registry
+            "anton.utils.datasources.DatasourceRegistry", return_value=registry
         ):
-            _restore_namespaced_env(vault)
+            restore_namespaced_env(vault)
 
         secret_key = "DS_POSTGRESQL_PROD_DB__PASSWORD"
         assert secret_key in _DS_SECRET_VARS
@@ -1833,9 +1837,9 @@ class TestStaleDsRegistrationState:
         )
 
         with patch(
-            "anton.datasource_registry.DatasourceRegistry", return_value=registry
+            "anton.utils.datasources.DatasourceRegistry", return_value=registry
         ):
-            _restore_namespaced_env(vault)
+            restore_namespaced_env(vault)
 
         assert secret_key in _DS_SECRET_VARS
         assert len(_DS_SECRET_VARS) == count_before
@@ -1857,17 +1861,17 @@ class TestStaleDsRegistrationState:
         )
 
         with patch(
-            "anton.datasource_registry.DatasourceRegistry", return_value=registry
+            "anton.utils.datasources.DatasourceRegistry", return_value=registry
         ):
-            _restore_namespaced_env(vault)
+            restore_namespaced_env(vault)
 
         count_after_first = len(_DS_SECRET_VARS)
         known_after_first = len(_DS_KNOWN_VARS)
 
         with patch(
-            "anton.datasource_registry.DatasourceRegistry", return_value=registry
+            "anton.utils.datasources.DatasourceRegistry", return_value=registry
         ):
-            _restore_namespaced_env(vault)
+            restore_namespaced_env(vault)
 
         assert len(_DS_SECRET_VARS) == count_after_first
         assert len(_DS_KNOWN_VARS) == known_after_first
@@ -1928,13 +1932,13 @@ class TestAddCustomDatasourceFlow:
 
         with (
             patch(
-                "anton.chat.prompt_or_cancel",
+                "anton.commands.datasource.prompt_or_cancel",
                 new=AsyncMock(side_effect=lambda *a, **kw: next(responses)),
             ),
-            patch("anton.chat.Path") as mock_path_cls,
+            patch("anton.commands.datasource.Path") as mock_path_cls,
         ):
             self._mock_ds_path(mock_path_cls, tmp_path)
-            result = await _handle_add_custom_datasource(
+            result = await handle_add_custom_datasource(
                 console, "mydb", registry, session
             )
 
@@ -1968,13 +1972,13 @@ class TestAddCustomDatasourceFlow:
 
         with (
             patch(
-                "anton.chat.prompt_or_cancel",
+                "anton.commands.datasource.prompt_or_cancel",
                 new=AsyncMock(side_effect=lambda *a, **kw: next(responses)),
             ),
-            patch("anton.chat.Path") as mock_path_cls,
+            patch("anton.commands.datasource.Path") as mock_path_cls,
         ):
             self._mock_ds_path(mock_path_cls, tmp_path)
-            result = await _handle_add_custom_datasource(
+            result = await handle_add_custom_datasource(
                 console, "mydb", registry, session
             )
 
@@ -2013,13 +2017,13 @@ class TestAddCustomDatasourceFlow:
 
         with (
             patch(
-                "anton.chat.prompt_or_cancel",
+                "anton.commands.datasource.prompt_or_cancel",
                 new=AsyncMock(side_effect=lambda *a, **kw: next(responses)),
             ),
-            patch("anton.chat.Path") as mock_path_cls,
+            patch("anton.commands.datasource.Path") as mock_path_cls,
         ):
             self._mock_ds_path(mock_path_cls, tmp_path)
-            result = await _handle_add_custom_datasource(
+            result = await handle_add_custom_datasource(
                 console, "mydb", registry, session
             )
 
@@ -2101,19 +2105,19 @@ class TestCustomDatasourceConnectFlow:
         )
 
         with (
-            patch("anton.chat.DataVault", return_value=vault),
+            patch("anton.commands.datasource.DataVault", return_value=vault),
             patch(
-                "anton.chat.DatasourceRegistry",
+                "anton.commands.datasource.DatasourceRegistry",
                 return_value=self._make_registry(tmp_path),
             ),
             patch(
-                "anton.chat.prompt_or_cancel",
+                "anton.commands.datasource.prompt_or_cancel",
                 new=AsyncMock(side_effect=lambda *a, **kw: next(responses)),
             ),
-            patch("anton.chat.Path") as mock_path_cls,
+            patch("anton.commands.datasource.Path") as mock_path_cls,
         ):
             self._mock_ds_path(mock_path_cls, tmp_path)
-            result = await _handle_connect_datasource(
+            result = await handle_connect_datasource(
                 console, session._scratchpads, session
             )
 
@@ -2157,19 +2161,19 @@ class TestCustomDatasourceConnectFlow:
         )
 
         with (
-            patch("anton.chat.DataVault", return_value=vault),
+            patch("anton.commands.datasource.DataVault", return_value=vault),
             patch(
-                "anton.chat.DatasourceRegistry",
+                "anton.commands.datasource.DatasourceRegistry",
                 return_value=self._make_registry(tmp_path),
             ),
             patch(
-                "anton.chat.prompt_or_cancel",
+                "anton.commands.datasource.prompt_or_cancel",
                 new=AsyncMock(side_effect=lambda *a, **kw: next(responses)),
             ),
-            patch("anton.chat.Path") as mock_path_cls,
+            patch("anton.commands.datasource.Path") as mock_path_cls,
         ):
             self._mock_ds_path(mock_path_cls, tmp_path)
-            result = await _handle_connect_datasource(
+            result = await handle_connect_datasource(
                 console, session._scratchpads, session
             )
 
@@ -2218,19 +2222,19 @@ class TestCustomDatasourceConnectFlow:
         )
 
         with (
-            patch("anton.chat.DataVault", return_value=vault),
+            patch("anton.commands.datasource.DataVault", return_value=vault),
             patch(
-                "anton.chat.DatasourceRegistry",
+                "anton.commands.datasource.DatasourceRegistry",
                 return_value=self._make_registry(tmp_path),
             ),
             patch(
-                "anton.chat.prompt_or_cancel",
+                "anton.commands.datasource.prompt_or_cancel",
                 new=AsyncMock(side_effect=lambda *a, **kw: next(responses)),
             ),
-            patch("anton.chat.Path") as mock_path_cls,
+            patch("anton.commands.datasource.Path") as mock_path_cls,
         ):
             self._mock_ds_path(mock_path_cls, tmp_path)
-            result = await _handle_connect_datasource(
+            result = await handle_connect_datasource(
                 console, session._scratchpads, session
             )
 
@@ -2270,19 +2274,19 @@ class TestCustomDatasourceConnectFlow:
         responses = iter(["0", "My API Service", "I have an API key", "n", "my_key"])
 
         with (
-            patch("anton.chat.DataVault", return_value=vault),
+            patch("anton.commands.datasource.DataVault", return_value=vault),
             patch(
-                "anton.chat.DatasourceRegistry",
+                "anton.commands.datasource.DatasourceRegistry",
                 return_value=self._make_registry(tmp_path),
             ),
             patch(
-                "anton.chat.prompt_or_cancel",
+                "anton.commands.datasource.prompt_or_cancel",
                 new=AsyncMock(side_effect=lambda *a, **kw: next(responses)),
             ),
-            patch("anton.chat.Path") as mock_path_cls,
+            patch("anton.commands.datasource.Path") as mock_path_cls,
         ):
             self._mock_ds_path(mock_path_cls, tmp_path)
-            await _handle_connect_datasource(console, session._scratchpads, session)
+            await handle_connect_datasource(console, session._scratchpads, session)
 
         conns = vault.list_connections()
         assert len(conns) == 1
@@ -2321,14 +2325,14 @@ class TestEditDatasourceWithTestSnippet:
         )  # field values, then retry?
 
         with (
-            patch("anton.chat.DataVault", return_value=vault),
-            patch("anton.chat.DatasourceRegistry", return_value=registry),
+            patch("anton.commands.datasource.DataVault", return_value=vault),
+            patch("anton.commands.datasource.DatasourceRegistry", return_value=registry),
             patch(
-                "anton.chat.prompt_or_cancel",
+                "anton.commands.datasource.prompt_or_cancel",
                 new=AsyncMock(side_effect=lambda *a, **kw: next(responses)),
             ),
         ):
-            result = await _handle_connect_datasource(
+            result = await handle_connect_datasource(
                 console,
                 session._scratchpads,
                 session,
@@ -2365,14 +2369,14 @@ class TestEditDatasourceWithTestSnippet:
         )
 
         with (
-            patch("anton.chat.DataVault", return_value=vault),
-            patch("anton.chat.DatasourceRegistry", return_value=registry),
+            patch("anton.commands.datasource.DataVault", return_value=vault),
+            patch("anton.commands.datasource.DatasourceRegistry", return_value=registry),
             patch(
-                "anton.chat.prompt_or_cancel",
+                "anton.commands.datasource.prompt_or_cancel",
                 new=AsyncMock(side_effect=lambda *a, **kw: next(prompt_responses)),
             ),
         ):
-            result = await _handle_connect_datasource(
+            result = await handle_connect_datasource(
                 console,
                 session._scratchpads,
                 session,
@@ -2417,11 +2421,11 @@ class TestEditDatasourceWithTestSnippet:
         }
 
         with (
-            patch("anton.chat.DataVault", return_value=vault),
-            patch("anton.chat.DatasourceRegistry", return_value=registry),
-            patch("anton.chat.prompt_or_cancel", new=AsyncMock(return_value="n")),
+            patch("anton.commands.datasource.DataVault", return_value=vault),
+            patch("anton.commands.datasource.DatasourceRegistry", return_value=registry),
+            patch("anton.commands.datasource.prompt_or_cancel", new=AsyncMock(return_value="n")),
         ):
-            result = await _run_connection_test(
+            result = await run_connection_test(
                 console,
                 scratchpads,
                 vault,
@@ -2448,11 +2452,11 @@ class TestPromptCopyConsistency:
         vault = DataVault(vault_dir=vault_dir)
 
         with (
-            patch("anton.chat.DataVault", return_value=vault),
-            patch("anton.chat.DatasourceRegistry", return_value=registry),
-            patch("anton.chat.prompt_or_cancel", new=AsyncMock(return_value=None)),
+            patch("anton.commands.datasource.DataVault", return_value=vault),
+            patch("anton.commands.datasource.DatasourceRegistry", return_value=registry),
+            patch("anton.commands.datasource.prompt_or_cancel", new=AsyncMock(return_value=None)),
         ):
-            result = await _handle_connect_datasource(
+            result = await handle_connect_datasource(
                 console, session._scratchpads, session
             )
 
@@ -2472,9 +2476,9 @@ class TestPromptCopyConsistency:
         session._scratchpads.get_or_create = AsyncMock(return_value=pad)
 
         with (
-            patch("anton.chat.DataVault", return_value=vault),
-            patch("anton.chat.DatasourceRegistry", return_value=registry),
-            patch("anton.chat.prompt_or_cancel", new=AsyncMock(return_value=None)),
+            patch("anton.commands.datasource.DataVault", return_value=vault),
+            patch("anton.commands.datasource.DatasourceRegistry", return_value=registry),
+            patch("anton.commands.datasource.prompt_or_cancel", new=AsyncMock(return_value=None)),
         ):
             engine_def = registry.get("postgresql")
             credentials = {
@@ -2484,7 +2488,7 @@ class TestPromptCopyConsistency:
                 "user": "u",
                 "password": "p",
             }
-            result = await _run_connection_test(
+            result = await run_connection_test(
                 console,
                 session._scratchpads,
                 vault,
@@ -2508,14 +2512,14 @@ class TestPromptCopyConsistency:
         poc_calls = iter(["PostgreSQL", None])  # engine selected, then Esc
 
         with (
-            patch("anton.chat.DataVault", return_value=vault),
-            patch("anton.chat.DatasourceRegistry", return_value=registry),
+            patch("anton.commands.datasource.DataVault", return_value=vault),
+            patch("anton.commands.datasource.DatasourceRegistry", return_value=registry),
             patch(
-                "anton.chat.prompt_or_cancel",
+                "anton.commands.datasource.prompt_or_cancel",
                 new=AsyncMock(side_effect=lambda *a, **kw: next(poc_calls)),
             ),
         ):
-            result = await _handle_connect_datasource(
+            result = await handle_connect_datasource(
                 console, session._scratchpads, session
             )
 
@@ -2538,12 +2542,12 @@ class TestPromptCopyConsistency:
             return None  # Esc on every prompt to bail out
 
         with (
-            patch("anton.chat.DataVault", return_value=vault),
-            patch("anton.chat.DatasourceRegistry", return_value=registry),
-            patch("anton.chat.prompt_or_cancel", new=AsyncMock(side_effect=_capture)),
+            patch("anton.commands.datasource.DataVault", return_value=vault),
+            patch("anton.commands.datasource.DatasourceRegistry", return_value=registry),
+            patch("anton.commands.datasource.prompt_or_cancel", new=AsyncMock(side_effect=_capture)),
         ):
             # "PostgreeSQL" triggers fuzzy match against "PostgreSQL"
-            await _handle_connect_datasource(
+            await handle_connect_datasource(
                 console,
                 session._scratchpads,
                 session,
