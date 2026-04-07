@@ -51,6 +51,7 @@ def print_slash_help(console: Console) -> None:
     console.print("\n[bold]Chat Tools[/]")
     console.print("  [bold]/paste[/]     — Attach an image from your clipboard")
     console.print("  [bold]/resume[/]    — Continue a previous session")
+    console.print("  [bold]/publish[/]   — Publish an HTML report to the web")
 
     console.print("\n[bold]General[/]")
     console.print("  [bold]/help[/]      — Show this help menu")
