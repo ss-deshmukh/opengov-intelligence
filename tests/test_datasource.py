@@ -24,10 +24,10 @@ from anton.commands.datasource import (
 from anton.datasource_utils import (
     _DS_KNOWN_VARS,
     _DS_SECRET_VARS,
-    _build_datasource_context,
-    _register_secret_vars,
-    _restore_namespaced_env,
-    _scrub_credentials,
+    build_datasource_context,
+    register_secret_vars,
+    restore_namespaced_env,
+    scrub_credentials,
     parse_connection_slug,
 )
 from anton.cli import app as _cli_app
@@ -868,7 +868,7 @@ class TestCredentialScrubbing:
         """Secret fields are added to _DS_SECRET_VARS; non-secret fields are not."""
         pg = registry.get("postgresql")
         assert pg is not None
-        _register_secret_vars(pg)
+        register_secret_vars(pg)
         assert "DS_PASSWORD" in _DS_SECRET_VARS
         assert "DS_HOST" not in _DS_SECRET_VARS
         assert "DS_PORT" not in _DS_SECRET_VARS
@@ -877,7 +877,7 @@ class TestCredentialScrubbing:
         """A registered secret value is replaced with its placeholder."""
         _DS_SECRET_VARS.add("DS_ACCESS_TOKEN")
         monkeypatch.setenv("DS_ACCESS_TOKEN", "supersecrettoken123")
-        result = _scrub_credentials("token is supersecrettoken123 here")
+        result = scrub_credentials("token is supersecrettoken123 here")
         assert "supersecrettoken123" not in result
         assert "[DS_ACCESS_TOKEN]" in result
 
@@ -885,10 +885,10 @@ class TestCredentialScrubbing:
         """Non-secret DS_* values (host, port) are left untouched."""
         pg = registry.get("postgresql")
         assert pg is not None
-        _register_secret_vars(pg)
+        register_secret_vars(pg)
         monkeypatch.setenv("DS_HOST", "mydbhostname")
         monkeypatch.setenv("DS_PASSWORD", "s3cr3tpassword99")
-        result = _scrub_credentials("host=mydbhostname pass=s3cr3tpassword99")
+        result = scrub_credentials("host=mydbhostname pass=s3cr3tpassword99")
         assert "mydbhostname" in result
         assert "s3cr3tpassword99" not in result
         assert "[DS_PASSWORD]" in result
@@ -897,14 +897,14 @@ class TestCredentialScrubbing:
         """Registered secrets are always scrubbed regardless of length."""
         _DS_SECRET_VARS.add("DS_PASSWORD")
         monkeypatch.setenv("DS_PASSWORD", "short")
-        result = _scrub_credentials("password=short")
+        result = scrub_credentials("password=short")
         assert "short" not in result
         assert "[DS_PASSWORD]" in result
 
     def test_scrub_fallback_redacts_unknown_long_ds_vars(self, monkeypatch):
         """Long DS_* vars not in _DS_SECRET_VARS are scrubbed as a safety fallback."""
         monkeypatch.setenv("DS_WEBHOOK_SECRET", "wh_sec_abcdefgh1234")
-        result = _scrub_credentials("secret=wh_sec_abcdefgh1234 here")
+        result = scrub_credentials("secret=wh_sec_abcdefgh1234 here")
         assert "wh_sec_abcdefgh1234" not in result
         assert "[DS_WEBHOOK_SECRET]" in result
 
@@ -950,37 +950,37 @@ class TestCredentialScrubbing:
         namespaced_pw_var = "DS_POSTGRESQL_MYDB__PASSWORD"
         assert namespaced_pw_var in _DS_SECRET_VARS
         monkeypatch.setenv(namespaced_pw_var, secret_pw)
-        result = _scrub_credentials(f"error: auth failed with {secret_pw}")
+        result = scrub_credentials(f"error: auth failed with {secret_pw}")
         assert secret_pw not in result
         assert f"[{namespaced_pw_var}]" in result
 
     def test_register_with_slug_uses_namespaced_keys(self, registry):
         pg = registry.get("postgresql")
-        _register_secret_vars(pg, engine="postgresql", name="prod_db")
+        register_secret_vars(pg, engine="postgresql", name="prod_db")
         assert "DS_POSTGRESQL_PROD_DB__PASSWORD" in _DS_SECRET_VARS
         assert "DS_POSTGRESQL_PROD_DB__HOST" not in _DS_SECRET_VARS
         assert "DS_POSTGRESQL_PROD_DB__HOST" in _DS_KNOWN_VARS
 
     def test_register_without_slug_uses_flat_keys(self, registry):
         pg = registry.get("postgresql")
-        _register_secret_vars(pg)  # no engine/name → flat mode
+        register_secret_vars(pg)  # no engine/name → flat mode
         assert "DS_PASSWORD" in _DS_SECRET_VARS
         assert "DS_HOST" not in _DS_SECRET_VARS
 
     def test_scrub_replaces_namespaced_secret_value(self, registry, monkeypatch):
         pg = registry.get("postgresql")
-        _register_secret_vars(pg, engine="postgresql", name="prod_db")
+        register_secret_vars(pg, engine="postgresql", name="prod_db")
         secret = "namespacedpassword123"
         monkeypatch.setenv("DS_POSTGRESQL_PROD_DB__PASSWORD", secret)
-        result = _scrub_credentials(f"error: {secret}")
+        result = scrub_credentials(f"error: {secret}")
         assert secret not in result
         assert "[DS_POSTGRESQL_PROD_DB__PASSWORD]" in result
 
     def test_scrub_leaves_namespaced_non_secret_readable(self, registry, monkeypatch):
         pg = registry.get("postgresql")
-        _register_secret_vars(pg, engine="postgresql", name="prod_db")
+        register_secret_vars(pg, engine="postgresql", name="prod_db")
         monkeypatch.setenv("DS_POSTGRESQL_PROD_DB__HOST", "mydbhostname")
-        result = _scrub_credentials("host=mydbhostname")
+        result = scrub_credentials("host=mydbhostname")
         assert "mydbhostname" in result
 
 
@@ -1052,7 +1052,7 @@ class TestActiveDatasourceScoping:
         vault.save("hubspot", "2", {"access_token": "pat-xxx"})
 
         with patch("anton.datasource_utils.DataVault", return_value=vault):
-            ctx = _build_datasource_context()
+            ctx = build_datasource_context()
 
         assert "oracle-1" in ctx
         assert "hubspot-2" in ctx
@@ -1064,7 +1064,7 @@ class TestActiveDatasourceScoping:
         vault.save("hubspot", "2", {"access_token": "pat-xxx"})
 
         with patch("anton.datasource_utils.DataVault", return_value=vault):
-            ctx = _build_datasource_context(active_only="hubspot-2")
+            ctx = build_datasource_context(active_only="hubspot-2")
 
         assert "hubspot-2" in ctx
         assert "oracle-1" not in ctx
@@ -1075,7 +1075,7 @@ class TestActiveDatasourceScoping:
         vault.save("oracle", "1", {"host": "oracle.host"})
 
         with patch("anton.datasource_utils.DataVault", return_value=vault):
-            ctx = _build_datasource_context(active_only="hubspot-99")
+            ctx = build_datasource_context(active_only="hubspot-99")
 
         assert "oracle-1" not in ctx
 
@@ -1086,7 +1086,7 @@ class TestActiveDatasourceScoping:
         )
 
         with patch("anton.datasource_utils.DataVault", return_value=vault):
-            ctx = _build_datasource_context()
+            ctx = build_datasource_context()
 
         assert "DS_POSTGRES_PROD_DB__HOST" in ctx
         assert "DS_POSTGRES_PROD_DB__PASSWORD" in ctx
@@ -1097,7 +1097,7 @@ class TestActiveDatasourceScoping:
         vault.save("postgres", "prod_db", {"host": "pg.example.com"})
 
         with patch("anton.datasource_utils.DataVault", return_value=vault):
-            ctx = _build_datasource_context()
+            ctx = build_datasource_context()
 
         assert "postgres-prod_db" in ctx
         assert "(postgres)" in ctx
@@ -1109,7 +1109,7 @@ class TestActiveDatasourceScoping:
         vault.save("hubspot", "main", {"access_token": "pat-abc"})
 
         with patch("anton.datasource_utils.DataVault", return_value=vault):
-            ctx = _build_datasource_context()
+            ctx = build_datasource_context()
 
         assert "postgres-prod_db" in ctx
         assert "DS_POSTGRES_PROD_DB__HOST" in ctx
@@ -1689,7 +1689,7 @@ class TestTemporaryFlatExecution:
         assert "DS_POSTGRES_ANALYTICS__HOST" not in os.environ
 
         with patch("anton.datasource_utils.DataVault", return_value=vault):
-            _restore_namespaced_env(vault)
+            restore_namespaced_env(vault)
 
         assert "DS_HOST" not in os.environ
         assert os.environ.get("DS_POSTGRES_ANALYTICS__HOST") == "analytics.example.com"
@@ -1703,7 +1703,7 @@ class TestTemporaryFlatExecution:
         vault.inject_env("postgres", "prod_db", flat=True)
 
         with patch("anton.datasource_utils.DataVault", return_value=vault):
-            _restore_namespaced_env(vault)
+            restore_namespaced_env(vault)
 
         assert "DS_HOST" not in os.environ
         assert os.environ.get("DS_POSTGRES_PROD_DB__HOST") == "prod.example.com"
@@ -1784,7 +1784,7 @@ class TestStaleDsRegistrationState:
         with patch(
             "anton.datasource_utils.DatasourceRegistry", return_value=registry
         ):
-            _restore_namespaced_env(vault)
+            restore_namespaced_env(vault)
 
         assert "DS_POSTGRESQL_PROD_DB__PASSWORD" in _DS_SECRET_VARS
         assert "DS_POSTGRESQL_PROD_DB__PASSWORD" in _DS_KNOWN_VARS
@@ -1794,7 +1794,7 @@ class TestStaleDsRegistrationState:
         with patch(
             "anton.datasource_utils.DatasourceRegistry", return_value=registry
         ):
-            _restore_namespaced_env(vault)
+            restore_namespaced_env(vault)
 
         assert "DS_POSTGRESQL_PROD_DB__PASSWORD" not in _DS_SECRET_VARS
         assert "DS_POSTGRESQL_PROD_DB__PASSWORD" not in _DS_KNOWN_VARS
@@ -1817,7 +1817,7 @@ class TestStaleDsRegistrationState:
         with patch(
             "anton.datasource_utils.DatasourceRegistry", return_value=registry
         ):
-            _restore_namespaced_env(vault)
+            restore_namespaced_env(vault)
 
         secret_key = "DS_POSTGRESQL_PROD_DB__PASSWORD"
         assert secret_key in _DS_SECRET_VARS
@@ -1839,7 +1839,7 @@ class TestStaleDsRegistrationState:
         with patch(
             "anton.datasource_utils.DatasourceRegistry", return_value=registry
         ):
-            _restore_namespaced_env(vault)
+            restore_namespaced_env(vault)
 
         assert secret_key in _DS_SECRET_VARS
         assert len(_DS_SECRET_VARS) == count_before
@@ -1863,7 +1863,7 @@ class TestStaleDsRegistrationState:
         with patch(
             "anton.datasource_utils.DatasourceRegistry", return_value=registry
         ):
-            _restore_namespaced_env(vault)
+            restore_namespaced_env(vault)
 
         count_after_first = len(_DS_SECRET_VARS)
         known_after_first = len(_DS_KNOWN_VARS)
@@ -1871,7 +1871,7 @@ class TestStaleDsRegistrationState:
         with patch(
             "anton.datasource_utils.DatasourceRegistry", return_value=registry
         ):
-            _restore_namespaced_env(vault)
+            restore_namespaced_env(vault)
 
         assert len(_DS_SECRET_VARS) == count_after_first
         assert len(_DS_KNOWN_VARS) == known_after_first

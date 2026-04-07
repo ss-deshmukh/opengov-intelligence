@@ -55,7 +55,7 @@ def parse_connection_slug(
     return None
 
 
-def _register_secret_vars(
+def register_secret_vars(
     engine_def: "DatasourceEngine", *, engine: str = "", name: str = ""
 ) -> None:
     """Record which DS_* var names correspond to known/secret fields for engine_def.
@@ -77,7 +77,7 @@ def _register_secret_vars(
             _DS_SECRET_VARS.add(key)
 
 
-def _scrub_credentials(text: str) -> str:
+def scrub_credentials(text: str) -> str:
     """Remove secret DS_* values from scratchpad output before it reaches the LLM.
 
     Only redacts vars registered as secret via _register_secret_vars (driven by
@@ -105,7 +105,7 @@ def _scrub_credentials(text: str) -> str:
     return text
 
 
-def _build_datasource_context(active_only: str | None = None) -> str:
+def build_datasource_context(active_only: str | None = None) -> str:
     """Build a system-prompt section listing available DS_* env vars by name.
 
     Shows the LLM what data sources are connected and which environment
@@ -138,7 +138,7 @@ def _build_datasource_context(active_only: str | None = None) -> str:
     return "\n".join(lines)
 
 
-def _restore_namespaced_env(vault: DataVault) -> None:
+def restore_namespaced_env(vault: DataVault) -> None:
     """Clear all DS_* vars, then reinject every saved connection as namespaced."""
     _reset_registered_ds_vars()
     vault.clear_ds_env()
@@ -147,10 +147,10 @@ def _restore_namespaced_env(vault: DataVault) -> None:
         vault.inject_env(conn["engine"], conn["name"])  # flat=False by default
         edef = dreg.get(conn["engine"])
         if edef is not None:
-            _register_secret_vars(edef, engine=conn["engine"], name=conn["name"])
+            register_secret_vars(edef, engine=conn["engine"], name=conn["name"])
 
 
-def _remove_engine_block(text: str, slug: str) -> str:
+def remove_engine_block(text: str, slug: str) -> str:
     """Return *text* with any YAML datasource block for *slug* removed."""
     cleaned = []
     prev = 0
