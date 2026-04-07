@@ -16,9 +16,9 @@ from rich.padding import Padding
 from anton.data_vault import DataVault
 from anton.datasource_registry import DatasourceEngine, DatasourceField, DatasourceRegistry
 from anton.datasource_utils import (
-    _register_secret_vars,
-    _remove_engine_block,
-    _restore_namespaced_env,
+    register_secret_vars,
+    remove_engine_block,
+    restore_namespaced_env,
     parse_connection_slug,
 )
 from anton.prompt_utils import prompt_or_cancel
@@ -117,7 +117,7 @@ async def handle_remove_data_source(console: Console, slug: str) -> None:
     )
     if confirm is not None and confirm.strip().lower() == "y":
         vault.delete(engine, name)
-        _restore_namespaced_env(vault)
+        restore_namespaced_env(vault)
         engine_def = registry.get(engine)
         if engine_def is not None and engine_def.custom:
             remaining = [
@@ -126,7 +126,7 @@ async def handle_remove_data_source(console: Console, slug: str) -> None:
             if not remaining:
                 user_path = DatasourceRegistry._USER_PATH
                 if user_path.is_file():
-                    updated = _remove_engine_block(
+                    updated = remove_engine_block(
                         user_path.read_text(encoding="utf-8"), engine
                     )
                     user_path.write_text(updated, encoding="utf-8")
@@ -214,7 +214,7 @@ async def run_connection_test(
         vault.clear_ds_env()
         for key, value in credentials.items():
             os.environ[f"DS_{key.upper()}"] = value
-        _register_secret_vars(engine_def)  # flat mode, for scrubbing during test
+        register_secret_vars(engine_def)  # flat mode, for scrubbing during test
 
         try:
             pad = await scratchpads.get_or_create("__datasource_test__")
@@ -243,7 +243,7 @@ async def run_connection_test(
                         continue
                 break
         finally:
-            _restore_namespaced_env(vault)
+            restore_namespaced_env(vault)
 
         if cell.error or (cell.stdout.strip() != "ok" and cell.stderr.strip()):
             error_text = cell.error or cell.stderr.strip() or cell.stdout.strip()
@@ -474,7 +474,7 @@ async def handle_add_custom_datasource(
         user_ds_path.read_text(encoding="utf-8") if user_ds_path.is_file() else ""
     )
 
-    existing = _remove_engine_block(existing, slug)
+    existing = remove_engine_block(existing, slug)
 
     tmp_path.write_text(existing + yaml_block, encoding="utf-8")
 
@@ -624,8 +624,8 @@ async def handle_connect_datasource(
                 return session
 
         vault.save(edit_engine, edit_name, credentials)
-        _restore_namespaced_env(vault)
-        _register_secret_vars(engine_def, engine=edit_engine, name=edit_name)
+        restore_namespaced_env(vault)
+        register_secret_vars(engine_def, engine=edit_engine, name=edit_name)
         console.print()
         console.print(
             f'        Credentials updated for [bold]"{datasource_name}"[/bold].'
@@ -726,11 +726,11 @@ async def handle_connect_datasource(
     }
     if stripped_answer in known_slugs:
         conn = known_slugs[stripped_answer]
-        _restore_namespaced_env(vault)
+        restore_namespaced_env(vault)
         session._active_datasource = stripped_answer
         recon_engine_def = registry.get(conn["engine"])
         if recon_engine_def:
-            _register_secret_vars(recon_engine_def, engine=conn["engine"], name=conn["name"])
+            register_secret_vars(recon_engine_def, engine=conn["engine"], name=conn["name"])
             engine_label = recon_engine_def.display_name
         else:
             engine_label = conn["engine"]
@@ -876,9 +876,9 @@ async def handle_connect_datasource(
         conn_name = uuid.uuid4().hex[:8]
         vault.save(engine_def.engine, conn_name, credentials)
         slug = f"{engine_def.engine}-{conn_name}"
-        _restore_namespaced_env(vault)
+        restore_namespaced_env(vault)
         session._active_datasource = slug
-        _register_secret_vars(engine_def, engine=engine_def.engine, name=conn_name)
+        register_secret_vars(engine_def, engine=engine_def.engine, name=conn_name)
         console.print(
             f'        Credentials saved to Local Vault as [bold]"{slug}"[/bold].'
         )
@@ -1057,8 +1057,8 @@ async def handle_connect_datasource(
             console.print("[anton.muted]Cancelled.[/]")
             console.print()
             return session
-        _restore_namespaced_env(vault)
-        _register_secret_vars(engine_def, engine=engine_def.engine, name=conn_name)
+        restore_namespaced_env(vault)
+        register_secret_vars(engine_def, engine=engine_def.engine, name=conn_name)
         console.print()
         console.print(
             f'[anton.success]        ✓ Reconnected to [bold]"{slug}"[/bold].[/]'
@@ -1076,9 +1076,9 @@ async def handle_connect_datasource(
         return session
 
     vault.save(engine_def.engine, conn_name, credentials)
-    _restore_namespaced_env(vault)
+    restore_namespaced_env(vault)
     session._active_datasource = slug
-    _register_secret_vars(engine_def, engine=engine_def.engine, name=conn_name)
+    register_secret_vars(engine_def, engine=engine_def.engine, name=conn_name)
     console.print(f'        Credentials saved to Local Vault as [bold]"{slug}"[/bold].')
 
     console.print()
@@ -1153,7 +1153,7 @@ async def handle_test_datasource(
 
     vault.clear_ds_env()
     vault.inject_env(engine, name, flat=True)
-    _register_secret_vars(engine_def)  # flat names for scrubbing during test
+    register_secret_vars(engine_def)  # flat names for scrubbing during test
 
     cell = None
     try:
@@ -1163,7 +1163,7 @@ async def handle_test_datasource(
             await pad.install_packages([engine_def.pip])
         cell = await pad.execute(engine_def.test_snippet)
     finally:
-        _restore_namespaced_env(vault)
+        restore_namespaced_env(vault)
 
     if cell is None or cell.error or (
         cell.stdout.strip() != "ok" and cell.stderr.strip()
