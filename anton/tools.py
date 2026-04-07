@@ -168,10 +168,12 @@ CONNECT_DATASOURCE_TOOL = {
 PUBLISH_TOOL = {
     "name": "publish_or_preview",
     "description": (
-        "Call this IMMEDIATELY after generating an HTML dashboard or report in .anton/output/. "
-        "This tool prompts the user to preview (open locally in browser) or publish (share on the web). "
-        "Do NOT print any message before calling this tool — it handles the user-facing output. "
-        "Do NOT ask the user if they want to preview or publish — this tool does that interactively."
+        "Call this after generating an HTML dashboard or report in .anton/output/. "
+        "Actions: 'ask' (default) prompts the user to preview/publish/skip interactively. "
+        "'preview' opens the file in the browser immediately. "
+        "'publish' publishes to the web immediately. "
+        "Use 'preview' or 'publish' when the user has already stated their intent. "
+        "Use 'ask' after generating a new dashboard to let the user choose."
     ),
     "input_schema": {
         "type": "object",
@@ -183,6 +185,11 @@ PUBLISH_TOOL = {
             "title": {
                 "type": "string",
                 "description": "Short title describing the dashboard (e.g. 'BTC & Macro Dashboard')",
+            },
+            "action": {
+                "type": "string",
+                "enum": ["ask", "preview", "publish"],
+                "description": "What to do: 'ask' prompts user, 'preview' opens locally, 'publish' publishes to web",
             },
         },
         "required": ["file_path"],
@@ -525,12 +532,11 @@ async def handle_publish_or_preview(session: ChatSession, tc_input: dict) -> str
     import webbrowser
     from pathlib import Path
 
-    from anton.prompt_utils import prompt_or_cancel
-
     console = session._console
 
     raw_path = tc_input.get("file_path", "")
     title = tc_input.get("title", "Dashboard")
+    action = tc_input.get("action", "ask")
     file_path = Path(raw_path)
     if not file_path.is_absolute() and session._workspace:
         file_path = Path(session._workspace.base) / raw_path
@@ -538,43 +544,56 @@ async def handle_publish_or_preview(session: ChatSession, tc_input: dict) -> str
     if not file_path.exists():
         return f"File not found: {file_path}"
 
-    console.print()
-    console.print(f"  [anton.success]Dashboard ready:[/] {title}")
-    console.print(f"  [anton.muted]{file_path.name}[/]")
-    console.print()
-
-    choice = await prompt_or_cancel(
-        "  (anton) Preview, publish, or skip?",
-        choices=["preview", "publish", "skip", "p", "s"],
-        choices_display="preview/publish/skip",
-        default="preview",
-    )
-
-    if choice is None or choice in ("skip", "s"):
-        console.print()
-        return "User skipped preview and publish."
-
-    if choice in ("preview", "p"):
+    # Direct preview — just open and return, no prompts
+    if action == "preview":
         abs_path = os.path.abspath(str(file_path))
         webbrowser.open(f"file://{abs_path}")
-        console.print("  [anton.muted]Opened in browser.[/]")
+        return f"Opened {title} in browser for preview."
+
+    # Direct publish — skip to publish flow
+    if action == "publish":
+        choice = "publish"
+    else:
+        # Interactive: ask the user
+        from anton.prompt_utils import prompt_or_cancel
+
+        console.print()
+        console.print(f"  [anton.success]Dashboard ready:[/] {title}")
+        console.print(f"  [anton.muted]{file_path.name}[/]")
         console.print()
 
-        # After preview, offer to publish or keep chatting for changes
-        pub_choice = await prompt_or_cancel(
-            "  (anton) Publish to the web, or keep chatting to make changes?",
-            choices=["publish", "chat", "p", "c"],
-            choices_display="publish/chat",
-            default="chat",
+        choice = await prompt_or_cancel(
+            "  (anton) Preview, publish, or skip?",
+            choices=["preview", "publish", "skip", "p", "s"],
+            choices_display="preview/publish/skip",
+            default="preview",
         )
-        if pub_choice is None or pub_choice in ("chat", "c"):
-            console.print("  [anton.muted]Want to make changes? Just keep chatting.[/]")
+
+        if choice is None or choice in ("skip", "s"):
             console.print()
-            return (
-                "User previewed the dashboard and wants to keep chatting. "
-                "They may ask for changes — wait for their input."
+            return "User skipped preview and publish."
+
+        if choice in ("preview", "p"):
+            abs_path = os.path.abspath(str(file_path))
+            webbrowser.open(f"file://{abs_path}")
+            console.print("  [anton.muted]Opened in browser.[/]")
+            console.print()
+
+            # After preview, offer to publish or keep chatting
+            pub_choice = await prompt_or_cancel(
+                "  (anton) Publish to the web, or keep chatting to make changes?",
+                choices=["publish", "chat", "p", "c"],
+                choices_display="publish/chat",
+                default="chat",
             )
-        choice = "publish"
+            if pub_choice is None or pub_choice in ("chat", "c"):
+                console.print("  [anton.muted]Want to make changes? Just keep chatting.[/]")
+                console.print()
+                return (
+                    "User previewed the dashboard and wants to keep chatting. "
+                    "They may ask for changes — wait for their input."
+                )
+            choice = "publish"
 
     # Publish flow
     from anton.config.settings import AntonSettings
