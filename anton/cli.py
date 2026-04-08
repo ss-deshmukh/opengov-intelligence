@@ -788,8 +788,14 @@ def _validate_openai_probe_response(response) -> None:
 
 
 def _handle_retry(settings, ws, console, retry_fn) -> None:
-    retry = Confirm.ask("  Try again?", default=True, console=console)
-    if retry:
+    from rich.prompt import Prompt
+    choice = Prompt.ask(
+        "  Retry, or switch provider?",
+        choices=["retry", "switch", "r", "s"],
+        default="retry",
+        console=console,
+    )
+    if choice in ("retry", "r"):
         retry_fn(settings, ws)
     else:
         raise _SetupRetry()
