@@ -209,3 +209,10 @@ __marimo__/
 # Anton
 .anton/
 .DS_Store
+
+# Next.js frontend
+frontend/node_modules/
+frontend/.next/
+frontend/.next/cache/
+node_modules/
+.next/
