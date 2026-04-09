@@ -1,6 +1,6 @@
-# Anton E2E Test Suite
+# OSCAT E2E Test Suite
 
-End-to-end tests that run the Anton CLI as a subprocess. Two modes:
+End-to-end tests that run the OSCAT CLI as a subprocess. Two modes:
 
 - **Stub** (default) — responses served by a local HTTP stub server, no API key needed, fully deterministic.
 - **Live** — real LLM provider, requires a configured API key.
@@ -47,9 +47,9 @@ The harness sets all required env vars automatically. You do not need a `.env` f
 Live mode inherits your shell environment and applies test-specific overrides (analytics off, no autoupdates, no colour). You need a valid provider configured, e.g.:
 
 ```bash
-export ANTON_OPENAI_API_KEY=sk-...
-export ANTON_PLANNING_PROVIDER=openai
-export ANTON_CODING_PROVIDER=openai
+export OSCAT_OPENAI_API_KEY=sk-...
+export OSCAT_PLANNING_PROVIDER=openai
+export OSCAT_CODING_PROVIDER=openai
 python -m pytest tests/e2e/ --live
 ```
 

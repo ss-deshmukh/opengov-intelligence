@@ -1,4 +1,4 @@
-"""Tests for anton.memory.episodes — episodic memory system."""
+"""Tests for oscat.memory.episodes — episodic memory system."""
 
 from __future__ import annotations
 
@@ -9,7 +9,7 @@ from pathlib import Path
 
 import pytest
 
-from anton.memory.episodes import Episode, EpisodicMemory
+from oscat.memory.episodes import Episode, EpisodicMemory
 
 
 @pytest.fixture()
@@ -305,8 +305,8 @@ class TestDisabled:
 class TestWorkspaceIsolation:
     def test_recall_isolated_across_workspaces(self, tmp_path: Path):
         """Episodes logged in workspace A must not appear in workspace B's recall."""
-        em_a = EpisodicMemory(tmp_path / "project_a" / ".anton" / "episodes")
-        em_b = EpisodicMemory(tmp_path / "project_b" / ".anton" / "episodes")
+        em_a = EpisodicMemory(tmp_path / "project_a" / ".oscat" / "episodes")
+        em_b = EpisodicMemory(tmp_path / "project_b" / ".oscat" / "episodes")
 
         em_a.start_session()
         em_a.log_turn(1, "user", "secret project A data")

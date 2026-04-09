@@ -5,7 +5,7 @@ from pathlib import Path
 
 import pytest
 
-from anton.workspace import Workspace
+from oscat.workspace import Workspace
 
 
 @pytest.fixture()
@@ -21,93 +21,93 @@ class TestFolderStateChecks:
         ws.initialize()
         assert ws.is_initialized() is True
 
-    def test_has_non_anton_files_empty_folder(self, ws):
-        assert ws.has_non_anton_files() is False
+    def test_has_non_oscat_files_empty_folder(self, ws):
+        assert ws.has_non_oscat_files() is False
 
-    def test_has_non_anton_files_with_regular_files(self, ws, tmp_path):
+    def test_has_non_oscat_files_with_regular_files(self, ws, tmp_path):
         (tmp_path / "README.md").write_text("hello")
-        assert ws.has_non_anton_files() is True
+        assert ws.has_non_oscat_files() is True
 
-    def test_has_non_anton_files_ignores_anton_files(self, ws, tmp_path):
-        (tmp_path / ".anton").mkdir()
-        assert ws.has_non_anton_files() is False
+    def test_has_non_oscat_files_ignores_oscat_files(self, ws, tmp_path):
+        (tmp_path / ".oscat").mkdir()
+        assert ws.has_non_oscat_files() is False
 
-    def test_has_non_anton_files_ignores_hidden_files(self, ws, tmp_path):
+    def test_has_non_oscat_files_ignores_hidden_files(self, ws, tmp_path):
         (tmp_path / ".git").mkdir()
         (tmp_path / ".gitignore").write_text("node_modules")
-        assert ws.has_non_anton_files() is False
+        assert ws.has_non_oscat_files() is False
 
     def test_needs_confirmation_empty_folder(self, ws):
         assert ws.needs_confirmation() is False
 
-    def test_needs_confirmation_non_empty_no_anton_md(self, ws, tmp_path):
+    def test_needs_confirmation_non_empty_no_oscat_md(self, ws, tmp_path):
         (tmp_path / "index.js").write_text("console.log('hi')")
         assert ws.needs_confirmation() is True
 
-    def test_needs_confirmation_non_empty_with_anton_md(self, ws, tmp_path):
+    def test_needs_confirmation_non_empty_with_oscat_md(self, ws, tmp_path):
         (tmp_path / "index.js").write_text("console.log('hi')")
-        (tmp_path / ".anton").mkdir()
-        (tmp_path / ".anton" / "anton.md").write_text("context")
+        (tmp_path / ".oscat").mkdir()
+        (tmp_path / ".oscat" / "oscat.md").write_text("context")
         assert ws.needs_confirmation() is False
 
 
 class TestInitialization:
-    def test_creates_anton_dir(self, ws, tmp_path):
+    def test_creates_oscat_dir(self, ws, tmp_path):
         ws.initialize()
-        assert (tmp_path / ".anton").is_dir()
+        assert (tmp_path / ".oscat").is_dir()
 
-    def test_creates_anton_md(self, ws, tmp_path):
+    def test_creates_oscat_md(self, ws, tmp_path):
         ws.initialize()
-        assert (tmp_path / ".anton" / "anton.md").is_file()
-        content = (tmp_path / ".anton" / "anton.md").read_text()
-        assert "Anton Workspace" in content
+        assert (tmp_path / ".oscat" / "oscat.md").is_file()
+        content = (tmp_path / ".oscat" / "oscat.md").read_text()
+        assert "OSCAT Workspace" in content
 
     def test_creates_env_file(self, ws, tmp_path):
         ws.initialize()
-        assert (tmp_path / ".anton" / ".env").is_file()
+        assert (tmp_path / ".oscat" / ".env").is_file()
 
     def test_idempotent(self, ws, tmp_path):
         ws.initialize()
-        (tmp_path / ".anton" / "anton.md").write_text("custom content")
+        (tmp_path / ".oscat" / "oscat.md").write_text("custom content")
         ws.initialize()
-        # Should not overwrite existing anton.md
-        assert (tmp_path / ".anton" / "anton.md").read_text() == "custom content"
+        # Should not overwrite existing oscat.md
+        assert (tmp_path / ".oscat" / "oscat.md").read_text() == "custom content"
 
     def test_returns_actions(self, ws):
         actions = ws.initialize()
-        assert len(actions) == 3  # .anton/, anton.md, .env
+        assert len(actions) == 3  # .oscat/, oscat.md, .env
 
 
-class TestAntonMd:
+class TestOscatMd:
     def test_read_none_when_missing(self, ws):
-        assert ws.read_anton_md() is None
+        assert ws.read_oscat_md() is None
 
     def test_read_content(self, ws, tmp_path):
-        (tmp_path / ".anton").mkdir(exist_ok=True)
-        (tmp_path / ".anton" / "anton.md").write_text("project info")
-        assert ws.read_anton_md() == "project info"
+        (tmp_path / ".oscat").mkdir(exist_ok=True)
+        (tmp_path / ".oscat" / "oscat.md").write_text("project info")
+        assert ws.read_oscat_md() == "project info"
 
     def test_tracked_read(self, ws, tmp_path):
-        (tmp_path / ".anton").mkdir(exist_ok=True)
-        (tmp_path / ".anton" / "anton.md").write_text("info")
-        content = ws.read_anton_md_tracked()
+        (tmp_path / ".oscat").mkdir(exist_ok=True)
+        (tmp_path / ".oscat" / "oscat.md").write_text("info")
+        content = ws.read_oscat_md_tracked()
         assert content == "info"
         # After tracked read, modified_since returns False (unless file changes)
-        assert ws.anton_md_modified_since_last_read() is False
+        assert ws.oscat_md_modified_since_last_read() is False
 
     def test_modified_since_first_read(self, ws, tmp_path):
-        (tmp_path / ".anton").mkdir(exist_ok=True)
-        (tmp_path / ".anton" / "anton.md").write_text("info")
+        (tmp_path / ".oscat").mkdir(exist_ok=True)
+        (tmp_path / ".oscat" / "oscat.md").write_text("info")
         # Before any tracked read, should be True
-        assert ws.anton_md_modified_since_last_read() is True
+        assert ws.oscat_md_modified_since_last_read() is True
 
     def test_build_context_empty(self, ws):
-        assert ws.build_anton_md_context() == ""
+        assert ws.build_oscat_md_context() == ""
 
     def test_build_context_with_content(self, ws, tmp_path):
-        (tmp_path / ".anton").mkdir(exist_ok=True)
-        (tmp_path / ".anton" / "anton.md").write_text("Uses Python 3.11 and pytest")
-        context = ws.build_anton_md_context()
+        (tmp_path / ".oscat").mkdir(exist_ok=True)
+        (tmp_path / ".oscat" / "oscat.md").write_text("Uses Python 3.11 and pytest")
+        context = ws.build_oscat_md_context()
         assert "Project Context" in context
         assert "Python 3.11" in context
 
@@ -124,9 +124,9 @@ class TestSecretVault:
         assert ws.has_secret("OTHER") is False
 
     def test_set_secret_creates_env_dir(self, ws, tmp_path):
-        # Even without initialize(), set_secret creates .anton/
+        # Even without initialize(), set_secret creates .oscat/
         ws.set_secret("KEY", "value")
-        assert (tmp_path / ".anton" / ".env").is_file()
+        assert (tmp_path / ".oscat" / ".env").is_file()
 
     def test_set_secret_updates_existing(self, ws, tmp_path):
         ws.initialize()
@@ -142,25 +142,25 @@ class TestSecretVault:
         assert ws.get_secret("B") == "2"
 
     def test_set_secret_updates_environ(self, ws, tmp_path):
-        ws.set_secret("ANTON_TEST_SECRET_XYZ", "secretval")
-        assert os.environ.get("ANTON_TEST_SECRET_XYZ") == "secretval"
+        ws.set_secret("OSCAT_TEST_SECRET_XYZ", "secretval")
+        assert os.environ.get("OSCAT_TEST_SECRET_XYZ") == "secretval"
         # Clean up
-        del os.environ["ANTON_TEST_SECRET_XYZ"]
+        del os.environ["OSCAT_TEST_SECRET_XYZ"]
 
     def test_apply_env_to_process(self, ws, tmp_path):
         ws.initialize()
-        ws.set_secret("ANTON_TEST_APPLY_KEY", "applied")
+        ws.set_secret("OSCAT_TEST_APPLY_KEY", "applied")
         # Remove from environ to test apply
-        del os.environ["ANTON_TEST_APPLY_KEY"]
+        del os.environ["OSCAT_TEST_APPLY_KEY"]
         count = ws.apply_env_to_process()
         assert count >= 1
-        assert os.environ.get("ANTON_TEST_APPLY_KEY") == "applied"
+        assert os.environ.get("OSCAT_TEST_APPLY_KEY") == "applied"
         # Clean up
-        del os.environ["ANTON_TEST_APPLY_KEY"]
+        del os.environ["OSCAT_TEST_APPLY_KEY"]
 
     def test_load_env_ignores_comments(self, ws, tmp_path):
-        (tmp_path / ".anton").mkdir(parents=True, exist_ok=True)
-        (tmp_path / ".anton" / ".env").write_text(
+        (tmp_path / ".oscat").mkdir(parents=True, exist_ok=True)
+        (tmp_path / ".oscat" / ".env").write_text(
             "# comment\nKEY=value\n\n# another\n"
         )
         env = ws.load_env()
@@ -192,7 +192,7 @@ class TestSecretVault:
         assert ws.has_secret("DROP") is False
 
     def test_remove_secret_pops_environ(self, ws, tmp_path):
-        ws.set_secret("ANTON_TEST_REMOVE_XYZ", "val")
-        assert os.environ.get("ANTON_TEST_REMOVE_XYZ") == "val"
-        ws.remove_secret("ANTON_TEST_REMOVE_XYZ")
-        assert os.environ.get("ANTON_TEST_REMOVE_XYZ") is None
+        ws.set_secret("OSCAT_TEST_REMOVE_XYZ", "val")
+        assert os.environ.get("OSCAT_TEST_REMOVE_XYZ") == "val"
+        ws.remove_secret("OSCAT_TEST_REMOVE_XYZ")
+        assert os.environ.get("OSCAT_TEST_REMOVE_XYZ") is None

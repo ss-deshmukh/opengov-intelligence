@@ -8,7 +8,7 @@ Usage:
     with StubServer() as stub:
         stub.queue_text("Hello!")
         stub.queue_verification_ok()
-        # ... run anton subprocess against stub.base_url ...
+        # ... run (oscat) subprocess against stub.base_url ...
         assert stub.request_count == 2
 """
 

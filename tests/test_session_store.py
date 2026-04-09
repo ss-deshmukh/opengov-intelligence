@@ -4,7 +4,7 @@ import json
 
 import pytest
 
-from anton.memory.store import SessionStore
+from oscat.memory.store import SessionStore
 
 
 @pytest.fixture()

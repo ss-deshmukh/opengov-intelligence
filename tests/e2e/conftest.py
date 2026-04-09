@@ -1,5 +1,5 @@
 """
-Pytest configuration for Anton E2E tests.
+Pytest configuration for OSCAT E2E tests.
 
 Adds:
   --live        run against real LLM provider instead of stub server

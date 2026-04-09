@@ -6,13 +6,13 @@ import pytest
 
 from tests.e2e.harness import (
     LiveProvider, assert_exit_fail, assert_exit_ok, assert_not_output,
-    assert_output, base_env, run_anton,
+    assert_output, base_env, run_oscat,
 )
 
 
 def test_clean_boot(cfg, stub, tmp_path):
     # No stub response queued: "exit" breaks the loop before any LLM call is made.
-    result = run_anton(["--folder", str(tmp_path)], ["exit"],
+    result = run_oscat(["--folder", str(tmp_path)], ["exit"],
                        env=base_env(stub), timeout=cfg.timeout(20))
     assert_exit_ok(result)
     assert_output(result, "exit' to quit")
@@ -24,12 +24,12 @@ def test_sessions_subcommand_empty_listing(cfg, stub, tmp_path):
     # reads SessionStore, so the listing is always empty under this harness.
     stub.queue_text("Hi there!")
     stub.queue_verification_ok()
-    setup_result = run_anton(["--folder", str(tmp_path)], ["hello", "exit"],
+    setup_result = run_oscat(["--folder", str(tmp_path)], ["hello", "exit"],
                              env=base_env(stub), timeout=cfg.timeout(20))
     assert_exit_ok(setup_result)
     assert_not_output(setup_result, "Traceback (most recent call last)")
 
-    result = run_anton(["--folder", str(tmp_path), "sessions"], [],
+    result = run_oscat(["--folder", str(tmp_path), "sessions"], [],
                        env=base_env(stub), timeout=cfg.timeout(10))
     assert_exit_ok(result)
     assert_output(result, "No sessions found.")
@@ -38,16 +38,16 @@ def test_sessions_subcommand_empty_listing(cfg, stub, tmp_path):
 
 def test_version_subcommand(cfg):
     # version needs no provider — avoid spinning up a stub server
-    result = run_anton(["version"], [], env=base_env(LiveProvider()), timeout=cfg.timeout(10))
+    result = run_oscat(["version"], [], env=base_env(LiveProvider()), timeout=cfg.timeout(10))
     assert_exit_ok(result)
-    assert_output(result, "Anton v")
+    assert_output(result, "OSCAT v")
     assert_not_output(result, "Traceback (most recent call last)")
 
 
 def test_invalid_provider_exits_with_error(cfg, stub, tmp_path):
     env = base_env(stub)
-    env["ANTON_PLANNING_PROVIDER"] = "nonexistent-provider-xyz"
-    result = run_anton(["--folder", str(tmp_path)], ["exit"],
+    env["OSCAT_PLANNING_PROVIDER"] = "nonexistent-provider-xyz"
+    result = run_oscat(["--folder", str(tmp_path)], ["exit"],
                        env=env, timeout=cfg.timeout(15))
     assert_exit_fail(result)
     assert_output(result, "Unknown planning provider")
@@ -56,11 +56,11 @@ def test_invalid_provider_exits_with_error(cfg, stub, tmp_path):
 
 @pytest.mark.stub_only
 def test_planning_model_env_var_used(cfg, stub, tmp_path):
-    """ANTON_PLANNING_MODEL is sent as the model field in the HTTP request."""
+    """OSCAT_PLANNING_MODEL is sent as the model field in the HTTP request."""
     stub.queue_text("All good.")
     env = base_env(stub)
-    env["ANTON_PLANNING_MODEL"] = "my-custom-model-for-test"
-    result = run_anton(["--folder", str(tmp_path)], ["hello", "exit"],
+    env["OSCAT_PLANNING_MODEL"] = "my-custom-model-for-test"
+    result = run_oscat(["--folder", str(tmp_path)], ["hello", "exit"],
                        env=env, timeout=cfg.timeout(20))
     assert_exit_ok(result)
     assert_not_output(result, "Traceback (most recent call last)")

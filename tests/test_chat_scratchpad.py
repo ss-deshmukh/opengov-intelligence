@@ -4,9 +4,9 @@ from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
 
-from anton.chat import SCRATCHPAD_TOOL, ChatSession
-from anton.commands.session import handle_resume
-from anton.llm.provider import LLMResponse, StreamComplete, StreamToolResult, ToolCall, Usage
+from oscat.chat import SCRATCHPAD_TOOL, ChatSession
+from oscat.commands.session import handle_resume
+from oscat.llm.provider import LLMResponse, StreamComplete, StreamToolResult, ToolCall, Usage
 
 
 def _text_response(text: str) -> LLMResponse:
@@ -370,8 +370,8 @@ class TestResumeSessionScratchpadCleanup:
         new_session._turn_count = 0
 
         with (
-            patch("anton.commands.session.prompt_or_cancel", new=AsyncMock(return_value="1")),
-            patch("anton.commands.session.rebuild_session", return_value=new_session),
+            patch("oscat.commands.session.prompt_or_cancel", new=AsyncMock(return_value="1")),
+            patch("oscat.commands.session.rebuild_session", return_value=new_session),
         ):
             await handle_resume(
                 console=MagicMock(),

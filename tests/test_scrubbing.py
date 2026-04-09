@@ -5,7 +5,7 @@ from unittest.mock import patch
 
 import pytest
 
-from anton.utils.datasources import (
+from oscat.utils.datasources import (
     _DS_KNOWN_VARS,
     _DS_SECRET_VARS,
     scrub_credentials,

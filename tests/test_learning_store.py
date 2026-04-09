@@ -4,7 +4,7 @@ import json
 
 import pytest
 
-from anton.memory.learnings import LearningStore
+from oscat.memory.learnings import LearningStore
 
 
 @pytest.fixture()

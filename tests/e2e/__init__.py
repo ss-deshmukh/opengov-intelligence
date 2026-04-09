@@ -1,1 +1,1 @@
-# Anton E2E test suite package
+# OSCAT E2E test suite package

@@ -4,7 +4,7 @@ from __future__ import annotations
 
 import pytest
 
-from tests.e2e.harness import assert_exit_ok, base_env, run_anton
+from tests.e2e.harness import assert_exit_ok, base_env, run_oscat
 from tests.e2e.stub_server import StubServer
 
 
@@ -36,7 +36,7 @@ def test_ds_secret_scrubbed_before_reaching_llm(tmp_path):
         stub.queue_verification_ok()
         env = base_env(stub)
         env[_SECRET_KEY] = _SECRET_VALUE
-        result = run_anton(["--folder", str(tmp_path)], ["print the db password", "exit"],
+        result = run_oscat(["--folder", str(tmp_path)], ["print the db password", "exit"],
                            env=env, timeout=20)
 
     assert not result.timed_out

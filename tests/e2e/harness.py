@@ -1,8 +1,8 @@
 """
-Shared utilities for Anton E2E tests.
+Shared utilities for OSCAT E2E tests.
 
 Provides:
-  run_anton()       run the real CLI as a subprocess
+  run_oscat()       run the real CLI as a subprocess
   base_env()        baseline env vars (stub URL, no consent/analytics/memory)
   assert_output()   pattern matching on captured stdout/stderr
   find_history_files()
@@ -43,7 +43,7 @@ class LiveProvider:
     """Drop-in replacement for StubServer in live mode.
 
     Queue methods are no-ops; the real provider is contacted directly.
-    base_url returns None so base_env() does not override ANTON_OPENAI_BASE_URL.
+    base_url returns None so base_env() does not override OSCAT_OPENAI_BASE_URL.
     """
 
     def queue_text(self, text: str) -> "LiveProvider":
@@ -106,7 +106,7 @@ class E2EConfig:
 
 
 
-def run_anton(
+def run_oscat(
     cmd_args: list[str],
     input_lines: list[str],
     *,
@@ -114,8 +114,8 @@ def run_anton(
     cwd: str | Path | None = None,
     timeout: float = 30.0,
 ) -> RunResult:
-    """Run the Anton CLI as a subprocess and capture all output."""
-    cmd = [sys.executable, "-m", "anton"] + cmd_args
+    """Run the OSCAT CLI as a subprocess and capture all output."""
+    cmd = [sys.executable, "-m", "(oscat)"] + cmd_args
     stdin_bytes = "\n".join(input_lines).encode() + b"\n"
 
     t0 = time.monotonic()
@@ -153,20 +153,20 @@ def base_env(
     *,
     memory_enabled: bool = False,
 ) -> dict[str, str]:
-    """Return an env dict that boots Anton against the given provider.
+    """Return an env dict that boots OSCAT against the given provider.
 
     Stub mode: fully controlled env pointing at the local stub server.
     Live mode: inherits the real process env, applies test-specific overrides
                (disable analytics/autoupdates, suppress colour output).
     """
     common: dict[str, str] = {
-        "ANTON_TERMS_CONSENT": "true",
-        "ANTON_ANALYTICS_ENABLED": "false",
-        "ANTON_DISABLE_AUTOUPDATES": "true",
-        "ANTON_MINDS_ENABLED": "false",
-        "ANTON_MEMORY_ENABLED": "true" if memory_enabled else "false",
-        "ANTON_MEMORY_MODE": "autopilot" if memory_enabled else "off",
-        "ANTON_EPISODIC_MEMORY": "true" if memory_enabled else "false",
+        "OSCAT_TERMS_CONSENT": "true",
+        "OSCAT_ANALYTICS_ENABLED": "false",
+        "OSCAT_DISABLE_AUTOUPDATES": "true",
+        "OSCAT_MINDS_ENABLED": "false",
+        "OSCAT_MEMORY_ENABLED": "true" if memory_enabled else "false",
+        "OSCAT_MEMORY_MODE": "autopilot" if memory_enabled else "off",
+        "OSCAT_EPISODIC_MEMORY": "true" if memory_enabled else "false",
         "NO_COLOR": "1",
         "TERM": "dumb",
         "PYTHONPATH": str(Path(__file__).parents[2]),
@@ -179,12 +179,12 @@ def base_env(
 
     return {
         **common,
-        "ANTON_PLANNING_PROVIDER": "openai-compatible",
-        "ANTON_CODING_PROVIDER": "openai-compatible",
-        "ANTON_OPENAI_BASE_URL": provider.base_url,
-        "ANTON_OPENAI_API_KEY": "test-key-e2e",
-        "ANTON_PLANNING_MODEL": "gpt-test",
-        "ANTON_CODING_MODEL": "gpt-test",
+        "OSCAT_PLANNING_PROVIDER": "openai-compatible",
+        "OSCAT_CODING_PROVIDER": "openai-compatible",
+        "OSCAT_OPENAI_BASE_URL": provider.base_url,
+        "OSCAT_OPENAI_API_KEY": "test-key-e2e",
+        "OSCAT_PLANNING_MODEL": "gpt-test",
+        "OSCAT_CODING_MODEL": "gpt-test",
         "PATH": os.environ.get("PATH", ""),
         "HOME": os.environ.get("HOME", ""),
         "TMPDIR": os.environ.get("TMPDIR", "/tmp"),
@@ -217,7 +217,7 @@ def assert_exit_fail(result: RunResult) -> None:
 
 def find_history_files(ws: Path) -> list[Path]:
     """Return all session history JSON files in the workspace."""
-    episodes_dir = ws / ".anton" / "episodes"
+    episodes_dir = ws / ".oscat" / "episodes"
     if not episodes_dir.exists():
         return []
     return sorted(episodes_dir.glob("*_history.json"))

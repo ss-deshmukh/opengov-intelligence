@@ -2,7 +2,7 @@ from __future__ import annotations
 
 from unittest.mock import MagicMock, patch
 
-from anton.chat_ui import PHASE_LABELS, StreamDisplay, _tool_display_text
+from oscat.chat_ui import PHASE_LABELS, StreamDisplay, _tool_display_text
 
 
 
@@ -12,14 +12,14 @@ class TestStreamDisplay:
         toolbar = {"stats": "", "status": ""}
         return StreamDisplay(console, toolbar=toolbar), console
 
-    @patch("anton.chat_ui.Live")
+    @patch("oscat.chat_ui.Live")
     def test_start_creates_live(self, MockLive):
         display, console = self._make_display()
         display.start()
         MockLive.assert_called_once()
         MockLive.return_value.start.assert_called_once()
 
-    @patch("anton.chat_ui.Live")
+    @patch("oscat.chat_ui.Live")
     def test_append_text_updates_buffer(self, MockLive):
         display, console = self._make_display()
         display.start()
@@ -32,7 +32,7 @@ class TestStreamDisplay:
         assert display._initial_text == "Hello world!"
         assert live.update.call_count == 2
 
-    @patch("anton.chat_ui.Live")
+    @patch("oscat.chat_ui.Live")
     def test_finish_stops_live_and_prints(self, MockLive):
         display, console = self._make_display()
         display.start()
@@ -45,7 +45,7 @@ class TestStreamDisplay:
         # Should print the response and stats
         assert console.print.call_count >= 2
 
-    @patch("anton.chat_ui.Live")
+    @patch("oscat.chat_ui.Live")
     def test_abort_stops_live_cleanly(self, MockLive):
         display, console = self._make_display()
         display.start()
@@ -57,7 +57,7 @@ class TestStreamDisplay:
         # abort should NOT print anything
         console.print.assert_not_called()
 
-    @patch("anton.chat_ui.Live")
+    @patch("oscat.chat_ui.Live")
     def test_update_progress_updates_spinner(self, MockLive):
         display, console = self._make_display()
         display.start()
@@ -68,7 +68,7 @@ class TestStreamDisplay:
         # Should have been called: once for start (initial spinner), once for update_progress
         assert live.update.call_count >= 1
 
-    @patch("anton.chat_ui.Live")
+    @patch("oscat.chat_ui.Live")
     def test_update_progress_without_eta(self, MockLive):
         display, console = self._make_display()
         display.start()
@@ -89,7 +89,7 @@ class TestActivityTracking:
         toolbar = {"stats": "", "status": ""}
         return StreamDisplay(console, toolbar=toolbar), console
 
-    @patch("anton.chat_ui.Live")
+    @patch("oscat.chat_ui.Live")
     def test_tool_use_creates_activity(self, MockLive):
         display, _ = self._make_display()
         display.start()
@@ -100,7 +100,7 @@ class TestActivityTracking:
         assert display._activities[0].tool_id == "tool_1"
         assert display._activities[0].name == "scratchpad"
 
-    @patch("anton.chat_ui.Live")
+    @patch("oscat.chat_ui.Live")
     def test_json_delta_accumulation(self, MockLive):
         display, _ = self._make_display()
         display.start()
@@ -113,7 +113,7 @@ class TestActivityTracking:
         act = display._activities[0]
         assert act.description == "Scratchpad(exec)"
 
-    @patch("anton.chat_ui.Live")
+    @patch("oscat.chat_ui.Live")
     def test_finish_prints_activity_summary(self, MockLive):
         display, console = self._make_display()
         display.start()
@@ -129,10 +129,10 @@ class TestActivityTracking:
         display.append_text("Here's what I found...")
         display.finish()
 
-        # finish should print: muted initial, activity tree, anton> + answer markdown, trailing newline
+        # finish should print: muted initial, activity tree, oscat> + answer markdown, trailing newline
         assert console.print.call_count >= 4
 
-    @patch("anton.chat_ui.Live")
+    @patch("oscat.chat_ui.Live")
     def test_no_activities_no_tree(self, MockLive):
         display, console = self._make_display()
         display.start()
@@ -140,16 +140,16 @@ class TestActivityTracking:
         display.append_text("Just text, no tools")
         display.finish()
 
-        # Should print: anton> prefix, markdown, trailing newline — but no activity tree
+        # Should print: oscat> prefix, markdown, trailing newline — but no activity tree
         # The first print should NOT be a Text with tool labels
         calls = console.print.call_args_list
-        # With no activities, the first call is the "anton> " prefix
+        # With no activities, the first call is the "oscat> " prefix
         from rich.text import Text as RichText
         first_arg = calls[0][0][0] if calls[0][0] else None
         assert isinstance(first_arg, RichText)
-        assert "anton>" in first_arg.plain
+        assert "oscat>" in first_arg.plain
 
-    @patch("anton.chat_ui.Live")
+    @patch("oscat.chat_ui.Live")
     def test_multiple_tool_calls(self, MockLive):
         display, _ = self._make_display()
         display.start()
@@ -197,7 +197,7 @@ class TestActivityTracking:
         )
         assert result == "Scratchpad(exec)"
 
-    @patch("anton.chat_ui.Live")
+    @patch("oscat.chat_ui.Live")
     def test_text_routes_to_initial_before_tools(self, MockLive):
         display, _ = self._make_display()
         display.start()
@@ -207,7 +207,7 @@ class TestActivityTracking:
         assert display._buffer == ""
         assert not display._in_tool_phase
 
-    @patch("anton.chat_ui.Live")
+    @patch("oscat.chat_ui.Live")
     def test_text_routes_to_buffer_after_tools(self, MockLive):
         display, _ = self._make_display()
         display.start()

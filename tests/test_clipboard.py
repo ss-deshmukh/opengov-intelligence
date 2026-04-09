@@ -1,4 +1,4 @@
-"""Tests for anton.clipboard — all clipboard/subprocess access is mocked."""
+"""Tests for oscat.clipboard — all clipboard/subprocess access is mocked."""
 
 from __future__ import annotations
 
@@ -9,7 +9,7 @@ from unittest.mock import MagicMock, patch
 
 import pytest
 
-from anton.clipboard import (
+from oscat.clipboard import (
     ClipboardImage,
     ClipboardResult,
     UploadedFile,
@@ -23,18 +23,18 @@ from anton.clipboard import (
 
 class TestIsClipboardSupported:
     def test_supported_darwin_with_pillow(self):
-        with patch("anton.clipboard.platform") as mock_platform:
+        with patch("oscat.clipboard.platform") as mock_platform:
             mock_platform.system.return_value = "Darwin"
             with patch.dict("sys.modules", {"PIL": MagicMock(), "PIL.ImageGrab": MagicMock()}):
                 assert is_clipboard_supported() is True
 
     def test_unsupported_linux(self):
-        with patch("anton.clipboard.platform") as mock_platform:
+        with patch("oscat.clipboard.platform") as mock_platform:
             mock_platform.system.return_value = "Linux"
             assert is_clipboard_supported() is False
 
     def test_unsupported_no_pillow(self):
-        with patch("anton.clipboard.platform") as mock_platform:
+        with patch("oscat.clipboard.platform") as mock_platform:
             mock_platform.system.return_value = "Darwin"
             # Force ImportError for PIL.ImageGrab
             with patch.dict("sys.modules", {"PIL": None, "PIL.ImageGrab": None}):
@@ -59,7 +59,7 @@ class TestGrabClipboard:
             "PIL.Image": mock_image_mod,
         }):
             # Also need to make isinstance work — use a simpler approach
-            with patch("anton.clipboard._grab_image", return_value=fake_img):
+            with patch("oscat.clipboard._grab_image", return_value=fake_img):
                 result = grab_clipboard()
 
         assert result.image is not None
@@ -70,8 +70,8 @@ class TestGrabClipboard:
         assert result.text == ""
 
     def test_text_found(self):
-        with patch("anton.clipboard._grab_image", return_value=None):
-            with patch("anton.clipboard._grab_text", return_value="hello world"):
+        with patch("oscat.clipboard._grab_image", return_value=None):
+            with patch("oscat.clipboard._grab_text", return_value="hello world"):
                 result = grab_clipboard()
 
         assert result.image is None
@@ -83,8 +83,8 @@ class TestGrabClipboard:
         f1 = tmp_path / "test.txt"
         f1.write_text("hi")
 
-        with patch("anton.clipboard._grab_image", return_value=None):
-            with patch("anton.clipboard._grab_text", return_value=str(f1)):
+        with patch("oscat.clipboard._grab_image", return_value=None):
+            with patch("oscat.clipboard._grab_text", return_value=str(f1)):
                 result = grab_clipboard()
 
         assert result.image is None
@@ -93,8 +93,8 @@ class TestGrabClipboard:
         assert result.text == ""
 
     def test_empty_clipboard(self):
-        with patch("anton.clipboard._grab_image", return_value=None):
-            with patch("anton.clipboard._grab_text", return_value=""):
+        with patch("oscat.clipboard._grab_image", return_value=None):
+            with patch("oscat.clipboard._grab_text", return_value=""):
                 result = grab_clipboard()
 
         assert result.image is None
@@ -102,8 +102,8 @@ class TestGrabClipboard:
         assert result.text == ""
 
     def test_pillow_missing(self):
-        with patch("anton.clipboard._grab_image", return_value=None):
-            with patch("anton.clipboard._grab_text", return_value=""):
+        with patch("oscat.clipboard._grab_image", return_value=None):
+            with patch("oscat.clipboard._grab_text", return_value=""):
                 result = grab_clipboard()
 
         assert result.image is None
@@ -111,7 +111,7 @@ class TestGrabClipboard:
 
 class TestGrabImageInternal:
     def test_returns_none_without_pillow(self):
-        from anton.clipboard import _grab_image
+        from oscat.clipboard import _grab_image
 
         with patch.dict("sys.modules", {"PIL": None, "PIL.ImageGrab": None}):
             # Import will raise ImportError
@@ -119,7 +119,7 @@ class TestGrabImageInternal:
 
     def test_list_returned_is_skipped(self):
         """macOS Finder file copy returns a list of paths."""
-        from anton.clipboard import _grab_image
+        from oscat.clipboard import _grab_image
 
         mock_ig = MagicMock()
         mock_ig.grabclipboard.return_value = ["/path/to/file.png"]

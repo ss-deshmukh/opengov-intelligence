@@ -4,9 +4,9 @@ from unittest.mock import AsyncMock, patch
 
 import pytest
 
-from anton.config.settings import AntonSettings
-from anton.llm.client import LLMClient
-from anton.llm.provider import LLMProvider, LLMResponse, Usage
+from oscat.config.settings import OscatSettings
+from oscat.llm.client import LLMClient
+from oscat.llm.provider import LLMProvider, LLMResponse, Usage
 
 
 @pytest.fixture()
@@ -75,10 +75,10 @@ class TestLLMClient:
 
 class TestLLMClientFromSettings:
     def test_from_settings_creates_client(self):
-        from anton.llm.anthropic import AnthropicProvider
+        from oscat.llm.anthropic import AnthropicProvider
 
         with patch("anthropic.AsyncAnthropic"):
-            settings = AntonSettings(
+            settings = OscatSettings(
                 planning_provider="anthropic",
                 coding_provider="anthropic",
                 anthropic_api_key="test-key",
@@ -90,7 +90,7 @@ class TestLLMClientFromSettings:
             assert isinstance(client._coding_provider, AnthropicProvider)
 
     def test_unknown_planning_provider_raises(self):
-        settings = AntonSettings(
+        settings = OscatSettings(
             planning_provider="unknown",
             anthropic_api_key="test",
             _env_file=None,
@@ -99,7 +99,7 @@ class TestLLMClientFromSettings:
             LLMClient.from_settings(settings)
 
     def test_unknown_coding_provider_raises(self):
-        settings = AntonSettings(
+        settings = OscatSettings(
             coding_provider="unknown",
             anthropic_api_key="test",
             _env_file=None,

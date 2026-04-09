@@ -6,14 +6,14 @@ import json
 import time
 
 from tests.e2e.harness import (
-    E2EConfig, assert_exit_ok, assert_output, base_env, find_history_files, run_anton,
+    E2EConfig, assert_exit_ok, assert_output, base_env, find_history_files, run_oscat,
 )
 
 
 def test_new_session_creates_history_file(cfg, stub, tmp_path):
     stub.queue_text("Hello! SESSION_CREATED")
     stub.queue_verification_ok()
-    result = run_anton(["--folder", str(tmp_path)], ["hi there", "exit"],
+    result = run_oscat(["--folder", str(tmp_path)], ["hi there", "exit"],
                        env=base_env(stub, memory_enabled=True), timeout=cfg.timeout(20))
     assert_exit_ok(result)
     assert len(find_history_files(tmp_path)) >= 1, \
@@ -23,10 +23,10 @@ def test_new_session_creates_history_file(cfg, stub, tmp_path):
 def test_sessions_subcommand_lists_session(cfg, stub, tmp_path):
     stub.queue_text("Session reply.")
     stub.queue_verification_ok()
-    run_anton(["--folder", str(tmp_path)], ["create a session", "exit"],
+    run_oscat(["--folder", str(tmp_path)], ["create a session", "exit"],
               env=base_env(stub, memory_enabled=True), timeout=cfg.timeout(20))
 
-    result = run_anton(["--folder", str(tmp_path), "sessions"], [],
+    result = run_oscat(["--folder", str(tmp_path), "sessions"], [],
                        env=base_env(stub, memory_enabled=True), timeout=cfg.timeout(10))
     assert_exit_ok(result)
     assert len((result.stdout + result.stderr).strip()) > 0, "Sessions command produced no output"
@@ -36,7 +36,7 @@ def test_history_file_contains_correct_messages(cfg, stub, tmp_path):
     marker = "HISTORY_MARKER_E3"
     stub.queue_text(f"The answer is: {marker}")
     stub.queue_verification_ok()
-    result = run_anton(["--folder", str(tmp_path)], ["what is the marker", "exit"],
+    result = run_oscat(["--folder", str(tmp_path)], ["what is the marker", "exit"],
                        env=base_env(stub, memory_enabled=True), timeout=cfg.timeout(20))
     assert_exit_ok(result)
 
@@ -56,7 +56,7 @@ def test_two_runs_same_folder_no_corruption(cfg, tmp_path):
     with cfg.make_provider() as stub1:
         stub1.queue_text("First reply.")
         stub1.queue_verification_ok()
-        r1 = run_anton(["--folder", str(tmp_path)], ["first message", "exit"],
+        r1 = run_oscat(["--folder", str(tmp_path)], ["first message", "exit"],
                        env=base_env(stub1), timeout=cfg.timeout(20))
     assert_exit_ok(r1)
     if not cfg.live:
@@ -65,7 +65,7 @@ def test_two_runs_same_folder_no_corruption(cfg, tmp_path):
     with cfg.make_provider() as stub2:
         stub2.queue_text("Second reply. SECOND_OK")
         stub2.queue_verification_ok()
-        r2 = run_anton(["--folder", str(tmp_path)], ["second message", "exit"],
+        r2 = run_oscat(["--folder", str(tmp_path)], ["second message", "exit"],
                        env=base_env(stub2), timeout=cfg.timeout(20))
     assert_exit_ok(r2)
     if not cfg.live:
@@ -79,10 +79,10 @@ def test_two_runs_create_distinct_session_files(cfg, stub, tmp_path):
     stub.queue_verification_ok()
     env = base_env(stub, memory_enabled=True)
 
-    run_anton(["--folder", str(tmp_path)], ["session A", "exit"],
+    run_oscat(["--folder", str(tmp_path)], ["session A", "exit"],
               env=env, timeout=cfg.timeout(20))
     time.sleep(1.1)
-    run_anton(["--folder", str(tmp_path)], ["session B", "exit"],
+    run_oscat(["--folder", str(tmp_path)], ["session B", "exit"],
               env=env, timeout=cfg.timeout(20))
 
     history_files = find_history_files(tmp_path)

@@ -4,8 +4,8 @@ from unittest.mock import AsyncMock
 
 import pytest
 
-from anton.chat import ChatSession
-from anton.llm.provider import (
+from oscat.chat import ChatSession
+from oscat.llm.provider import (
     ContextOverflowError,
     LLMResponse,
     StreamComplete,
@@ -51,7 +51,7 @@ class TestChatSession:
         session = ChatSession(mock_llm)
         await session.turn("hello")
         await session.turn("can you check something")
-        await session.turn("the anton repo")
+        await session.turn("the (oscat) repo")
 
         # 3 user messages + 3 assistant messages
         assert len(session.history) == 6

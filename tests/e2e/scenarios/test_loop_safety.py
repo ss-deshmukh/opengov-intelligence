@@ -6,7 +6,7 @@ import json
 import pytest
 
 from tests.e2e.harness import (
-    assert_exit_ok, assert_not_output, assert_output, base_env, run_anton,
+    assert_exit_ok, assert_not_output, assert_output, base_env, run_oscat,
 )
 
 
@@ -16,7 +16,7 @@ def test_max_tool_rounds_circuit_breaker_fires(cfg, stub, tmp_path):
     for i in range(26):
         stub.queue_tool_call("scratchpad", {"action": "exec", "name": f"loop_{i}", "code": f"print({i})"})
     stub.queue_text("Summarising. CIRCUIT_FIRED")
-    result = run_anton(["--folder", str(tmp_path)], ["run forever", "exit"],
+    result = run_oscat(["--folder", str(tmp_path)], ["run forever", "exit"],
                        env=base_env(stub), timeout=cfg.timeout(60))
 
     assert_exit_ok(result)
@@ -38,7 +38,7 @@ def test_continuation_limit_respected(cfg, stub, tmp_path):
     stub.queue_tool_call("scratchpad", _tool(3))
     stub.queue_text("Round 3 done.")
     stub.queue_text("BUDGET_EXHAUSTED")
-    result = run_anton(["--folder", str(tmp_path)], ["do continuations", "exit"],
+    result = run_oscat(["--folder", str(tmp_path)], ["do continuations", "exit"],
                        env=base_env(stub), timeout=cfg.timeout(60))
 
     assert_exit_ok(result)
@@ -53,7 +53,7 @@ def test_continuation_limit_respected(cfg, stub, tmp_path):
 def test_session_exits_within_timeout(cfg, stub, tmp_path):
     stub.queue_text("Quick reply. QUICK_EXIT")
     stub.queue_verification_ok()
-    result = run_anton(["--folder", str(tmp_path)], ["quick question", "exit"],
+    result = run_oscat(["--folder", str(tmp_path)], ["quick question", "exit"],
                        env=base_env(stub), timeout=cfg.timeout(25))
     assert_exit_ok(result)
     assert_not_output(result, "Traceback (most recent call last)")
@@ -68,7 +68,7 @@ def test_resilience_nudge_injected_after_two_errors(cfg, stub, tmp_path):
     stub.queue_tool_call("scratchpad", {"action": "exec", "name": "bad2", "code": bad_code})
     stub.queue_text("NUDGE_RECEIVED")
     stub.queue_verification_ok()
-    result = run_anton(["--folder", str(tmp_path)], ["do bad stuff", "exit"],
+    result = run_oscat(["--folder", str(tmp_path)], ["do bad stuff", "exit"],
                        env=base_env(stub), timeout=cfg.timeout(30))
 
     assert_exit_ok(result)
@@ -87,7 +87,7 @@ def test_circuit_breaker_fires_after_five_consecutive_errors(cfg, stub, tmp_path
         stub.queue_tool_call("scratchpad", {"action": "exec", "name": f"err_{i}", "code": bad_code})
     stub.queue_text("ERRORS_EXHAUSTED")
     stub.queue_verification_ok()
-    result = run_anton(["--folder", str(tmp_path)], ["break everything", "exit"],
+    result = run_oscat(["--folder", str(tmp_path)], ["break everything", "exit"],
                        env=base_env(stub), timeout=cfg.timeout(45))
 
     assert_exit_ok(result)

@@ -5,7 +5,7 @@ from unittest.mock import AsyncMock
 
 import pytest
 
-from anton.memory.consolidator import Consolidator
+from oscat.memory.consolidator import Consolidator
 
 
 @dataclass

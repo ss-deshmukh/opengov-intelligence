@@ -4,7 +4,7 @@ from pathlib import Path
 
 import pytest
 
-from anton.context.self_awareness import ContextUpdate, SelfAwarenessContext
+from oscat.context.self_awareness import ContextUpdate, SelfAwarenessContext
 
 
 @pytest.fixture()

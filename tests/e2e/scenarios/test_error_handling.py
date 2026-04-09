@@ -8,7 +8,7 @@ import pytest
 
 from tests.e2e.harness import (
     assert_exit_fail, assert_exit_ok, assert_not_output, assert_output,
-    base_env, run_anton,
+    base_env, run_oscat,
 )
 from tests.e2e.stub_server import StubServer
 
@@ -16,8 +16,8 @@ from tests.e2e.stub_server import StubServer
 
 def test_invalid_provider_fails_fast(cfg, stub, tmp_path):
     env = base_env(stub)
-    env["ANTON_PLANNING_PROVIDER"] = "totally-bogus-provider-xyz"
-    result = run_anton(["--folder", str(tmp_path)], ["exit"],
+    env["OSCAT_PLANNING_PROVIDER"] = "totally-bogus-provider-xyz"
+    result = run_oscat(["--folder", str(tmp_path)], ["exit"],
                        env=env, timeout=cfg.timeout(15))
     assert_exit_fail(result)
     assert_output(result, "Unknown planning provider")
@@ -37,10 +37,10 @@ def test_http_500_handled_gracefully(cfg, tmp_path):
     threading.Thread(target=httpd.serve_forever, daemon=True).start()
     try:
         # StubServer() used only as an env-var template (provider type, api key);
-        # ANTON_OPENAI_BASE_URL is overridden below to point at the custom 500 server.
+        # OSCAT_OPENAI_BASE_URL is overridden below to point at the custom 500 server.
         env = base_env(StubServer())
-        env["ANTON_OPENAI_BASE_URL"] = f"http://127.0.0.1:{httpd.server_address[1]}/v1"
-        result = run_anton(["--folder", str(tmp_path)], ["hello", "exit"],
+        env["OSCAT_OPENAI_BASE_URL"] = f"http://127.0.0.1:{httpd.server_address[1]}/v1"
+        result = run_oscat(["--folder", str(tmp_path)], ["hello", "exit"],
                            env=env, timeout=cfg.timeout(30))
     finally:
         httpd.shutdown()
@@ -68,8 +68,8 @@ def test_malformed_json_handled_gracefully(cfg, tmp_path):
     try:
         # StubServer() used only as an env-var template; see test_http_500_handled_gracefully.
         env = base_env(StubServer())
-        env["ANTON_OPENAI_BASE_URL"] = f"http://127.0.0.1:{httpd.server_address[1]}/v1"
-        result = run_anton(["--folder", str(tmp_path)], ["hello", "exit"],
+        env["OSCAT_OPENAI_BASE_URL"] = f"http://127.0.0.1:{httpd.server_address[1]}/v1"
+        result = run_oscat(["--folder", str(tmp_path)], ["hello", "exit"],
                            env=env, timeout=cfg.timeout(20))
     finally:
         httpd.shutdown()
@@ -81,7 +81,7 @@ def test_malformed_json_handled_gracefully(cfg, tmp_path):
 def test_large_input_no_crash(cfg, stub, tmp_path):
     stub.queue_text("Got your big message.")
     stub.queue_verification_ok()
-    result = run_anton(["--folder", str(tmp_path)], ["x" * 100_000, "exit"],
+    result = run_oscat(["--folder", str(tmp_path)], ["x" * 100_000, "exit"],
                        env=base_env(stub), timeout=cfg.timeout(60))
     assert_exit_ok(result)
     assert_not_output(result, "Traceback (most recent call last)")

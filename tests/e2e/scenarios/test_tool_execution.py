@@ -5,7 +5,7 @@ from __future__ import annotations
 import json
 
 from tests.e2e.harness import (
-    assert_exit_ok, assert_not_output, assert_output, base_env, run_anton,
+    assert_exit_ok, assert_not_output, assert_output, base_env, run_oscat,
 )
 
 
@@ -14,7 +14,7 @@ def test_scratchpad_exec_produces_real_output(cfg, stub, tmp_path):
     stub.queue_text("The answer is 12345. EXEC_CONFIRMED")
     stub.queue_verification_ok()
     user_msg = "Please use the scratchpad tool to run: print(12345)" if cfg.live else "compute 12345"
-    result = run_anton(["--folder", str(tmp_path)], [user_msg, "exit"],
+    result = run_oscat(["--folder", str(tmp_path)], [user_msg, "exit"],
                        env=base_env(stub), timeout=cfg.timeout(30))
     assert_exit_ok(result)
     assert_not_output(result, "Traceback (most recent call last)")
@@ -29,7 +29,7 @@ def test_tool_result_forwarded_to_llm(cfg, stub, tmp_path):
         "Use the scratchpad to run: print('PROBE_MARKER_99') then tell me the output."
         if cfg.live else "run probe"
     )
-    result = run_anton(["--folder", str(tmp_path)], [user_msg, "exit"],
+    result = run_oscat(["--folder", str(tmp_path)], [user_msg, "exit"],
                        env=base_env(stub), timeout=cfg.timeout(30))
     assert_exit_ok(result)
     assert_not_output(result, "Traceback (most recent call last)")
@@ -54,7 +54,7 @@ def test_view_after_exec(cfg, stub, tmp_path):
                   "Now view the scratchpad notebook you just used", "exit"]
     else:
         inputs = ["exec the notebook", "now view it", "exit"]
-    result = run_anton(["--folder", str(tmp_path)], inputs,
+    result = run_oscat(["--folder", str(tmp_path)], inputs,
                        env=base_env(stub), timeout=cfg.timeout(35))
     assert_exit_ok(result)
     assert_not_output(result, "Traceback (most recent call last)")
@@ -69,7 +69,7 @@ def test_syntax_error_in_tool_does_not_kill_session(cfg, stub, tmp_path):
         "Use the scratchpad to run: def oops(:\n    pass\nAfter the error say SURVIVED_ERROR"
         if cfg.live else "run bad code"
     )
-    result = run_anton(["--folder", str(tmp_path)], [user_msg, "exit"],
+    result = run_oscat(["--folder", str(tmp_path)], [user_msg, "exit"],
                        env=base_env(stub), timeout=cfg.timeout(30))
     assert_exit_ok(result)
     assert_not_output(result, "Traceback (most recent call last)")
@@ -88,7 +88,7 @@ def test_scratchpad_reset_clears_state(cfg, stub, tmp_path):
                   "Now reset the scratchpad 'pad' and say RESET_CONFIRMED", "exit"]
     else:
         inputs = ["exec the pad", "now reset it", "exit"]
-    result = run_anton(["--folder", str(tmp_path)], inputs,
+    result = run_oscat(["--folder", str(tmp_path)], inputs,
                        env=base_env(stub), timeout=cfg.timeout(35))
     assert_exit_ok(result)
     assert_not_output(result, "Traceback (most recent call last)")
@@ -105,7 +105,7 @@ def test_two_sequential_tool_rounds_no_hang(cfg, stub, tmp_path):
         "After both say TWO_ROUNDS_DONE"
         if cfg.live else "do two rounds"
     )
-    result = run_anton(["--folder", str(tmp_path)], [user_msg, "exit"],
+    result = run_oscat(["--folder", str(tmp_path)], [user_msg, "exit"],
                        env=base_env(stub), timeout=cfg.timeout(40))
     assert_exit_ok(result)
     assert_not_output(result, "Traceback (most recent call last)")

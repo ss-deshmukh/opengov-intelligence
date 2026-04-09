@@ -5,9 +5,9 @@ from unittest.mock import MagicMock
 
 import openai
 
-import anton.minds_client as minds_client
-from anton.cli import _setup_openai, _validate_openai_probe_response
-from anton.config.settings import AntonSettings
+import oscat.minds_client as minds_client
+from oscat.cli import _setup_openai, _validate_openai_probe_response
+from oscat.config.settings import OscatSettings
 
 
 def test_minds_test_llm_uses_modern_openai_token_parameter(monkeypatch):
@@ -21,7 +21,7 @@ def test_minds_test_llm_uses_modern_openai_token_parameter(monkeypatch):
         captured["verify"] = verify
         return b"{}"
 
-    monkeypatch.setattr("anton.minds_client.minds_request", fake_minds_request)
+    monkeypatch.setattr("oscat.minds_client.minds_request", fake_minds_request)
 
     assert minds_client.test_llm("https://example.com", "test-key") is True
 
@@ -32,7 +32,7 @@ def test_minds_test_llm_uses_modern_openai_token_parameter(monkeypatch):
 
 
 def test_setup_openai_uses_modern_openai_token_parameter(monkeypatch):
-    settings = AntonSettings(_env_file=None)
+    settings = OscatSettings(_env_file=None)
     workspace = MagicMock()
     prompts = iter(["test-key", "gpt-5.4"])
     mock_create = MagicMock()
@@ -43,8 +43,8 @@ def test_setup_openai_uses_modern_openai_token_parameter(monkeypatch):
     mock_client = MagicMock()
     mock_client.chat.completions.create = mock_create
 
-    monkeypatch.setattr("anton.cli._setup_prompt", lambda *args, **kwargs: next(prompts))
-    monkeypatch.setattr("anton.cli._validate_with_spinner", lambda console, model, fn: fn())
+    monkeypatch.setattr("oscat.cli._setup_prompt", lambda *args, **kwargs: next(prompts))
+    monkeypatch.setattr("oscat.cli._validate_with_spinner", lambda console, model, fn: fn())
     monkeypatch.setattr(openai, "OpenAI", lambda api_key: mock_client)
 
     _setup_openai(settings, workspace)

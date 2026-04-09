@@ -1,9 +1,9 @@
 #Requires -Version 5.1
 <#
 .SYNOPSIS
-    Install Anton — autonomous AI coworker.
+    Install OSCAT — OpenShore Custom Analytics Tool.
 .DESCRIPTION
-    Downloads and installs Anton via uv tool install into an isolated virtual environment.
+    Downloads and installs OSCAT via uv tool install into an isolated virtual environment.
     Run: irm https://raw.githubusercontent.com/mindsdb/anton/main/install.ps1 | iex
 .PARAMETER Force
     Skip all confirmation prompts.
@@ -23,9 +23,9 @@ function Confirm-Step {
 
 # ── 1. Branded logo ────────────────────────────────────────────────
 Write-Host ""
-Write-Host "  ▄▀█ █▄ █ ▀█▀ █▀█ █▄ █" -ForegroundColor Cyan
-Write-Host "  █▀█ █ ▀█  █  █▄█ █ ▀█" -ForegroundColor Cyan
-Write-Host "  autonomous coworker" -ForegroundColor Cyan
+Write-Host "  █▀█ █▀▀ █▀▀ ▄▀█ ▀█▀" -ForegroundColor Cyan
+Write-Host "  █▄█ ▄▄█ █▄▄ █▀█  █ " -ForegroundColor Cyan
+Write-Host "  OSCAT — OpenShore Custom Analytics Tool" -ForegroundColor Cyan
 Write-Host ""
 
 # ── 2. Check execution policy ─────────────────────────────────────────
@@ -34,7 +34,7 @@ if ($policy -eq "Restricted" -or $policy -eq "Undefined") {
     $globalPolicy = Get-ExecutionPolicy -Scope LocalMachine
     if ($globalPolicy -eq "Restricted" -or $globalPolicy -eq "Undefined") {
         Write-Host "  PowerShell execution policy is too restrictive ($policy)." -ForegroundColor Yellow
-        Write-Host "  Anton needs 'RemoteSigned' to install and run scripts."
+        Write-Host "  OSCAT needs 'RemoteSigned' to install and run scripts."
         Write-Host ""
         if (Confirm-Step "Set execution policy to RemoteSigned for current user?") {
             try {
@@ -53,7 +53,7 @@ if ($policy -eq "Restricted" -or $policy -eq "Undefined") {
         }
         else {
             Write-Host ""
-            Write-Host "  To install Anton, you need to run this command first:" -ForegroundColor Yellow
+            Write-Host "  To install OSCAT, you need to run this command first:" -ForegroundColor Yellow
             Write-Host ""
             Write-Host "    Set-ExecutionPolicy RemoteSigned -Scope CurrentUser" -ForegroundColor Cyan
             Write-Host ""
@@ -97,7 +97,7 @@ else {
 }
 
 if ($needUv) {
-    Write-Host "warning: uv is not installed. It is required to manage anton's isolated environment." -ForegroundColor Yellow
+    Write-Host "warning: uv is not installed. It is required to manage OSCAT's isolated environment." -ForegroundColor Yellow
     Write-Host "  uv will be installed to ~\.local\bin via https://astral.sh/uv/install.ps1"
     if (Confirm-Step "Install uv?") {
         Write-Host "  Installing uv..."
@@ -120,18 +120,18 @@ if (-not (Get-Command uv -ErrorAction SilentlyContinue)) {
     exit 1
 }
 
-# ── 5. Install anton via uv tool ───────────────────────────────────
+# ── 5. Install oscat via uv tool ───────────────────────────────────
 Write-Host ""
 Write-Host "  This will install:"
-Write-Host "    - anton (from git+https://github.com/mindsdb/anton.git)"
+Write-Host "    - oscat (from git+https://github.com/mindsdb/anton.git)"
 Write-Host "    - Into an isolated virtual environment managed by uv"
 Write-Host "    - Python 3.11+ will be downloaded automatically if not present"
 Write-Host ""
 
 if (Confirm-Step "Proceed with installation?") {
-    Write-Host "  Installing anton into an isolated venv..."
+    Write-Host "  Installing OSCAT into an isolated venv..."
     uv tool install "git+https://github.com/mindsdb/anton.git" --force
-    Write-Host "  Installed anton"
+    Write-Host "  Installed OSCAT"
 }
 else {
     Write-Host "  Installation cancelled."
@@ -139,24 +139,24 @@ else {
 }
 
 # ── 6. Verify the venv was created ─────────────────────────────────
-$uvToolDir = Join-Path $HOME ".local\share\uv\tools\anton"
+$uvToolDir = Join-Path $HOME ".local\share\uv\tools\oscat"
 if (Test-Path $uvToolDir) {
     Write-Host "  Venv: $uvToolDir"
 }
 else {
-    Write-Host "warning: Could not verify anton's virtual environment." -ForegroundColor Yellow
+    Write-Host "warning: Could not verify OSCAT's virtual environment." -ForegroundColor Yellow
     Write-Host "  Expected at: $uvToolDir"
-    Write-Host "  Anton may still work — uv manages the environment internally."
+    Write-Host "  OSCAT may still work — uv manages the environment internally."
 }
 
 # ── 7. Configure firewall for scratchpad internet access ──────────
-#    Anton's scratchpads run Python in per-scratchpad venvs under
-#    ~/.anton/scratchpad-venvs/<name>/Scripts/python.exe.
+#    OSCAT's scratchpads run Python in per-scratchpad venvs under
+#    ~/.oscat/scratchpad-venvs/<name>/Scripts/python.exe.
 #    Windows Firewall blocks new executables by default, so we add a
 #    wildcard-style rule covering the entire scratchpad-venvs directory.
-$scratchpadVenvsDir = Join-Path $HOME ".anton\scratchpad-venvs"
+$scratchpadVenvsDir = Join-Path $HOME ".oscat\scratchpad-venvs"
 Write-Host ""
-Write-Host "  Anton's scratchpads need internet access (for web scraping, APIs, etc.)."
+Write-Host "  OSCAT's scratchpads need internet access (for web scraping, APIs, etc.)."
 Write-Host "  This adds a Windows Firewall rule allowing Python executables under:"
 Write-Host "    $scratchpadVenvsDir"
 Write-Host ""
@@ -172,7 +172,7 @@ if (Confirm-Step "Allow scratchpad internet access? (requires admin)") {
     $fwCommands = @()
 
     # Remove old single-venv rule if it exists (from previous installs)
-    $fwCommands += "netsh advfirewall firewall delete rule name=`"Anton Scratchpad`" 2>`$null"
+    $fwCommands += "netsh advfirewall firewall delete rule name=`"OSCAT Scratchpad`" 2>`$null"
 
     # Add rules for any existing scratchpad venvs
     $added = 0
@@ -180,16 +180,16 @@ if (Confirm-Step "Allow scratchpad internet access? (requires admin)") {
         Get-ChildItem -Path $scratchpadVenvsDir -Directory | ForEach-Object {
             $pyExe = Join-Path $_.FullName "Scripts\python.exe"
             if (Test-Path $pyExe) {
-                $fwCommands += "netsh advfirewall firewall add rule name=`"Anton Scratchpad - $($_.Name)`" dir=out action=allow program=`"$pyExe`""
+                $fwCommands += "netsh advfirewall firewall add rule name=`"OSCAT Scratchpad - $($_.Name)`" dir=out action=allow program=`"$pyExe`""
                 $added++
             }
         }
     }
 
     # Also add a rule for the uv tool python (used to create venvs)
-    $uvToolPython = Join-Path $HOME ".local\share\uv\tools\anton\Scripts\python.exe"
+    $uvToolPython = Join-Path $HOME ".local\share\uv\tools\oscat\Scripts\python.exe"
     if (Test-Path $uvToolPython) {
-        $fwCommands += "netsh advfirewall firewall add rule name=`"Anton Tool Python`" dir=out action=allow program=`"$uvToolPython`""
+        $fwCommands += "netsh advfirewall firewall add rule name=`"OSCAT Tool Python`" dir=out action=allow program=`"$uvToolPython`""
     }
 
     try {
@@ -202,17 +202,17 @@ if (Confirm-Step "Allow scratchpad internet access? (requires admin)") {
         Write-Host "  Firewall rules added ($added scratchpad venvs)" -ForegroundColor Green
         Write-Host "  Note: New scratchpads will create venvs automatically." -ForegroundColor Yellow
         Write-Host "  If a new scratchpad's internet calls time out, re-run this script or add a rule manually:"
-        Write-Host "    netsh advfirewall firewall add rule name=`"Anton Scratchpad`" dir=out action=allow program=`"$scratchpadVenvsDir\<name>\Scripts\python.exe`""
+        Write-Host "    netsh advfirewall firewall add rule name=`"OSCAT Scratchpad`" dir=out action=allow program=`"$scratchpadVenvsDir\<name>\Scripts\python.exe`""
     }
     catch {
         Write-Host "  Could not add firewall rules (admin declined or unavailable)." -ForegroundColor Yellow
         Write-Host "  You can add them manually later for each scratchpad:"
-        Write-Host "    netsh advfirewall firewall add rule name=`"Anton Scratchpad`" dir=out action=allow program=`"$scratchpadVenvsDir\<name>\Scripts\python.exe`""
+        Write-Host "    netsh advfirewall firewall add rule name=`"OSCAT Scratchpad`" dir=out action=allow program=`"$scratchpadVenvsDir\<name>\Scripts\python.exe`""
     }
 }
 else {
     Write-Host "  Skipped. If scratchpad internet calls time out, run this in an admin PowerShell:"
-    Write-Host "    netsh advfirewall firewall add rule name=`"Anton Scratchpad`" dir=out action=allow program=`"$scratchpadVenvsDir\<name>\Scripts\python.exe`""
+    Write-Host "    netsh advfirewall firewall add rule name=`"OSCAT Scratchpad`" dir=out action=allow program=`"$scratchpadVenvsDir\<name>\Scripts\python.exe`""
 }
 
 # ── 8. Ensure ~/.local/bin is in user PATH ──────────────────────────
@@ -236,17 +236,17 @@ else {
 
 # ── 9. Success message ──────────────────────────────────────────────
 Write-Host ""
-Write-Host "  ✓ anton installed successfully!" -ForegroundColor Green
+Write-Host "  ✓ OSCAT installed successfully!" -ForegroundColor Green
 Write-Host ""
 Write-Host "  Open a new terminal, then:"
 Write-Host ""
-Write-Host "    anton                                          " -NoNewline
+Write-Host "    oscat                                          " -NoNewline
 Write-Host "# Dashboard" -ForegroundColor Cyan
-Write-Host "    anton run `"analyze last month's sales data`"    " -NoNewline
-Write-Host "# Give Anton a task" -ForegroundColor Cyan
+Write-Host "    oscat run `"analyze last month's sales data`"    " -NoNewline
+Write-Host "# Give OSCAT a task" -ForegroundColor Cyan
 Write-Host ""
-Write-Host "  Upgrade:    uv tool upgrade anton"
-Write-Host "  Uninstall:  uv tool uninstall anton"
+Write-Host "  Upgrade:    uv tool upgrade oscat"
+Write-Host "  Uninstall:  uv tool uninstall oscat"
 Write-Host ""
-Write-Host "  Config: ~\.anton\.env"
+Write-Host "  Config: ~\.oscat\.env"
 Write-Host ""

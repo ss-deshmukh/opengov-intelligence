@@ -5,13 +5,13 @@ from __future__ import annotations
 import json
 
 from tests.e2e.harness import (
-    E2EConfig, assert_exit_ok, assert_output, base_env, find_history_files, run_anton,
+    E2EConfig, assert_exit_ok, assert_output, base_env, find_history_files, run_oscat,
 )
 
 
 def test_single_turn_response_visible(cfg, stub, tmp_path):
     stub.queue_text("UNIQUE_RESPONSE_MARKER_XYZ")
-    result = run_anton(["--folder", str(tmp_path)], ["hello world", "exit"],
+    result = run_oscat(["--folder", str(tmp_path)], ["hello world", "exit"],
                        env=base_env(stub), timeout=cfg.timeout(20))
     assert_exit_ok(result)
     if cfg.live:
@@ -23,7 +23,7 @@ def test_single_turn_response_visible(cfg, stub, tmp_path):
 def test_multi_turn_responses_visible(cfg, stub, tmp_path):
     stub.queue_text("Hi there! TURN_ONE_REPLY")
     stub.queue_text("Sure! TURN_TWO_REPLY")
-    result = run_anton(["--folder", str(tmp_path)],
+    result = run_oscat(["--folder", str(tmp_path)],
                        ["first message", "second message", "exit"],
                        env=base_env(stub), timeout=cfg.timeout(25))
     assert_exit_ok(result)
@@ -36,14 +36,14 @@ def test_multi_turn_responses_visible(cfg, stub, tmp_path):
 
 def test_blank_input_no_crash(cfg, stub, tmp_path):
     stub.queue_text("Fine reply after blank.")
-    result = run_anton(["--folder", str(tmp_path)], ["", "hello", "exit"],
+    result = run_oscat(["--folder", str(tmp_path)], ["", "hello", "exit"],
                        env=base_env(stub), timeout=cfg.timeout(20))
     assert not result.timed_out, f"App hung on blank input\n{result}"
 
 
 def test_exit_keyword_terminates(cfg, stub, tmp_path):
     stub.queue_text("Response before exit.")
-    result = run_anton(["--folder", str(tmp_path)], ["say something", "exit"],
+    result = run_oscat(["--folder", str(tmp_path)], ["say something", "exit"],
                        env=base_env(stub), timeout=cfg.timeout(20))
     assert_exit_ok(result)
     assert not result.timed_out
@@ -51,7 +51,7 @@ def test_exit_keyword_terminates(cfg, stub, tmp_path):
 
 def test_history_file_created_with_correct_content(cfg, stub, tmp_path):
     stub.queue_text("History test response 42.")
-    result = run_anton(["--folder", str(tmp_path)], ["history test message", "exit"],
+    result = run_oscat(["--folder", str(tmp_path)], ["history test message", "exit"],
                        env=base_env(stub, memory_enabled=True), timeout=cfg.timeout(20))
     assert_exit_ok(result)
 

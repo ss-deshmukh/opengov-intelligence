@@ -5,12 +5,12 @@ from pathlib import Path
 
 import pytest
 
-from anton.memory.reconsolidator import needs_reconsolidation, reconsolidate
+from oscat.memory.reconsolidator import needs_reconsolidation, reconsolidate
 
 
 @pytest.fixture()
 def project_dir(tmp_path):
-    d = tmp_path / ".anton"
+    d = tmp_path / ".oscat"
     d.mkdir()
     return d
 

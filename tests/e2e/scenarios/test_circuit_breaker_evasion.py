@@ -6,7 +6,7 @@ import json
 import pytest
 
 from tests.e2e.harness import (
-    assert_exit_ok, assert_not_output, assert_output, base_env, run_anton,
+    assert_exit_ok, assert_not_output, assert_output, base_env, run_oscat,
 )
 
 
@@ -23,7 +23,7 @@ def test_alternating_errors_evade_circuit_breaker(cfg, stub, tmp_path):
         stub.queue_tool_call("scratchpad", {"action": "exec", "name": f"bad_{i}", "code": _BAD_CODE})
         stub.queue_tool_call("scratchpad", {"action": "exec", "name": f"good_{i}", "code": _GOOD_CODE})
     stub.queue_text("Max rounds hit. ROUNDS_EXHAUSTED")
-    result = run_anton(["--folder", str(tmp_path)], ["keep trying", "exit"],
+    result = run_oscat(["--folder", str(tmp_path)], ["keep trying", "exit"],
                        env=base_env(stub), timeout=cfg.timeout(60))
 
     assert_exit_ok(result)

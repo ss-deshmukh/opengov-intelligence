@@ -5,8 +5,8 @@ import os
 
 import pytest
 
-import anton.scratchpad as scratchpad_module
-from anton.scratchpad import Cell, Scratchpad, ScratchpadManager
+import oscat.scratchpad as scratchpad_module
+from oscat.scratchpad import Cell, Scratchpad, ScratchpadManager
 
 
 class TestScratchpadBasicExecution:
@@ -388,7 +388,7 @@ class TestCellMetadata:
 
 class TestScratchpadEnvironment:
     async def test_env_vars_accessible(self, monkeypatch):
-        """Secrets from .anton/.env (in os.environ) are accessible in scratchpad."""
+        """Secrets from .oscat/.env (in os.environ) are accessible in scratchpad."""
         monkeypatch.setenv("MY_TEST_SECRET", "s3cret_value")
         pad = Scratchpad(name="env-test")
         await pad.start()
@@ -401,7 +401,7 @@ class TestScratchpadEnvironment:
             await pad.close()
 
     async def test_get_llm_available_when_model_set(self):
-        """get_llm() should be injected when ANTON_SCRATCHPAD_MODEL is set."""
+        """get_llm() should be injected when OSCAT_SCRATCHPAD_MODEL is set."""
         pad = Scratchpad(name="llm-test", _coding_model="claude-test-model")
         await pad.start()
         try:
@@ -458,8 +458,8 @@ class TestScratchpadEnvironment:
             await pad.close()
 
     async def test_api_key_bridged(self, monkeypatch):
-        """ANTON_ANTHROPIC_API_KEY should be bridged to ANTHROPIC_API_KEY."""
-        monkeypatch.setenv("ANTON_ANTHROPIC_API_KEY", "sk-ant-test-123")
+        """OSCAT_ANTHROPIC_API_KEY should be bridged to ANTHROPIC_API_KEY."""
+        monkeypatch.setenv("OSCAT_ANTHROPIC_API_KEY", "sk-ant-test-123")
         # Remove ANTHROPIC_API_KEY if set, to test the bridge
         monkeypatch.delenv("ANTHROPIC_API_KEY", raising=False)
         pad = Scratchpad(name="key-test", _coding_model="test-model")
@@ -780,14 +780,14 @@ class TestProgressAndTimeouts:
 
     async def test_compute_timeouts_no_estimate(self):
         """No estimate should use defaults."""
-        from anton.scratchpad import _compute_timeouts
+        from oscat.scratchpad import _compute_timeouts
         total, inactivity = _compute_timeouts(0)
         assert total == 120.0
         assert inactivity == 30.0
 
     async def test_compute_timeouts_with_estimate(self):
         """Estimate should scale total timeout and inactivity with no hard cap."""
-        from anton.scratchpad import _compute_timeouts
+        from oscat.scratchpad import _compute_timeouts
 
         # Small estimate: max(10*2, 10+30) = max(20, 40) = 40
         total, inactivity = _compute_timeouts(10)

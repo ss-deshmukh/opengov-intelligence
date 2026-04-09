@@ -9,10 +9,10 @@ from unittest.mock import AsyncMock, MagicMock, patch
 import pytest
 from rich.console import Console
 
-from anton.chat import (
+from oscat.chat import (
     ChatSession,
 )
-from anton.commands.datasource import (
+from oscat.commands.datasource import (
     _PROMPT_RECONNECT_CANCEL,
     handle_add_custom_datasource,
     handle_connect_datasource,
@@ -21,7 +21,7 @@ from anton.commands.datasource import (
     handle_list_data_sources,
     handle_remove_data_source,
 )
-from anton.utils.datasources import (
+from oscat.utils.datasources import (
     _DS_KNOWN_VARS,
     _DS_SECRET_VARS,
     build_datasource_context,
@@ -30,9 +30,9 @@ from anton.utils.datasources import (
     scrub_credentials,
     parse_connection_slug,
 )
-from anton.cli import app as cli_app
-from anton.data_vault import DataVault, _slug_env_prefix
-from anton.datasource_registry import (
+from oscat.cli import app as cli_app
+from oscat.data_vault import DataVault, _slug_env_prefix
+from oscat.datasource_registry import (
     DatasourceEngine,
     DatasourceRegistry,
     _parse_file,
@@ -573,9 +573,9 @@ class TestHandleConnectDatasource:
         console = MagicMock()
 
         with (
-            patch("anton.commands.datasource.DataVault", return_value=DataVault(vault_dir=vault_dir)),
-            patch("anton.commands.datasource.DatasourceRegistry", return_value=registry),
-            patch("anton.commands.datasource.prompt_or_cancel", return_value="MySQL"),
+            patch("oscat.commands.datasource.DataVault", return_value=DataVault(vault_dir=vault_dir)),
+            patch("oscat.commands.datasource.DatasourceRegistry", return_value=registry),
+            patch("oscat.commands.datasource.prompt_or_cancel", return_value="MySQL"),
         ):
             result = await handle_connect_datasource(
                 console, session._scratchpads, session
@@ -593,10 +593,10 @@ class TestHandleConnectDatasource:
         responses = iter(["PostgreSQL", "n", "n", "db.example.com", "", "", "", "", ""])
 
         with (
-            patch("anton.commands.datasource.DataVault", return_value=vault),
-            patch("anton.commands.datasource.DatasourceRegistry", return_value=registry),
+            patch("oscat.commands.datasource.DataVault", return_value=vault),
+            patch("oscat.commands.datasource.DatasourceRegistry", return_value=registry),
             patch(
-                "anton.commands.datasource.prompt_or_cancel",
+                "oscat.commands.datasource.prompt_or_cancel",
                 new=AsyncMock(side_effect=lambda *a, **kw: next(responses)),
             ),
         ):
@@ -638,10 +638,10 @@ class TestHandleConnectDatasource:
         )
 
         with (
-            patch("anton.commands.datasource.DataVault", return_value=vault),
-            patch("anton.commands.datasource.DatasourceRegistry", return_value=registry),
+            patch("oscat.commands.datasource.DataVault", return_value=vault),
+            patch("oscat.commands.datasource.DatasourceRegistry", return_value=registry),
             patch(
-                "anton.commands.datasource.prompt_or_cancel",
+                "oscat.commands.datasource.prompt_or_cancel",
                 new=AsyncMock(side_effect=lambda *a, **kw: next(responses)),
             ),
         ):
@@ -692,10 +692,10 @@ class TestHandleConnectDatasource:
         )
 
         with (
-            patch("anton.commands.datasource.DataVault", return_value=vault),
-            patch("anton.commands.datasource.DatasourceRegistry", return_value=registry),
+            patch("oscat.commands.datasource.DataVault", return_value=vault),
+            patch("oscat.commands.datasource.DatasourceRegistry", return_value=registry),
             patch(
-                "anton.commands.datasource.prompt_or_cancel",
+                "oscat.commands.datasource.prompt_or_cancel",
                 new=AsyncMock(side_effect=lambda *a, **kw: next(responses)),
             ),
         ):
@@ -735,10 +735,10 @@ class TestHandleConnectDatasource:
         )
 
         with (
-            patch("anton.commands.datasource.DataVault", return_value=vault),
-            patch("anton.commands.datasource.DatasourceRegistry", return_value=registry),
+            patch("oscat.commands.datasource.DataVault", return_value=vault),
+            patch("oscat.commands.datasource.DatasourceRegistry", return_value=registry),
             patch(
-                "anton.commands.datasource.prompt_or_cancel",
+                "oscat.commands.datasource.prompt_or_cancel",
                 new=AsyncMock(side_effect=lambda *a, **kw: next(responses)),
             ),
         ):
@@ -776,10 +776,10 @@ class TestHandleConnectDatasource:
         )
 
         with (
-            patch("anton.commands.datasource.DataVault", return_value=vault),
-            patch("anton.commands.datasource.DatasourceRegistry", return_value=registry),
+            patch("oscat.commands.datasource.DataVault", return_value=vault),
+            patch("oscat.commands.datasource.DatasourceRegistry", return_value=registry),
             patch(
-                "anton.commands.datasource.prompt_or_cancel",
+                "oscat.commands.datasource.prompt_or_cancel",
                 new=AsyncMock(side_effect=lambda *a, **kw: next(responses)),
             ),
         ):
@@ -803,10 +803,10 @@ class TestHandleConnectDatasource:
         responses = iter(["HubSpot", "1", "n", "y", "pat-na1-abc123"])
 
         with (
-            patch("anton.commands.datasource.DataVault", return_value=vault),
-            patch("anton.commands.datasource.DatasourceRegistry", return_value=registry),
+            patch("oscat.commands.datasource.DataVault", return_value=vault),
+            patch("oscat.commands.datasource.DatasourceRegistry", return_value=registry),
             patch(
-                "anton.commands.datasource.prompt_or_cancel",
+                "oscat.commands.datasource.prompt_or_cancel",
                 new=AsyncMock(side_effect=lambda *a, **kw: next(responses)),
             ),
         ):
@@ -845,10 +845,10 @@ class TestHandleConnectDatasource:
         )
 
         with (
-            patch("anton.commands.datasource.DataVault", return_value=vault),
-            patch("anton.commands.datasource.DatasourceRegistry", return_value=registry),
+            patch("oscat.commands.datasource.DataVault", return_value=vault),
+            patch("oscat.commands.datasource.DatasourceRegistry", return_value=registry),
             patch(
-                "anton.commands.datasource.prompt_or_cancel",
+                "oscat.commands.datasource.prompt_or_cancel",
                 new=AsyncMock(side_effect=lambda *a, **kw: next(responses)),
             ),
         ):
@@ -937,10 +937,10 @@ class TestCredentialScrubbing:
         )
 
         with (
-            patch("anton.commands.datasource.DataVault", return_value=vault),
-            patch("anton.commands.datasource.DatasourceRegistry", return_value=registry),
+            patch("oscat.commands.datasource.DataVault", return_value=vault),
+            patch("oscat.commands.datasource.DatasourceRegistry", return_value=registry),
             patch(
-                "anton.commands.datasource.prompt_or_cancel",
+                "oscat.commands.datasource.prompt_or_cancel",
                 new=AsyncMock(side_effect=lambda *a, **kw: next(responses)),
             ),
         ):
@@ -1001,8 +1001,8 @@ class TestActiveDatasourceScoping:
         console = MagicMock()
 
         with (
-            patch("anton.commands.datasource.DataVault", return_value=vault),
-            patch("anton.commands.datasource.DatasourceRegistry"),
+            patch("oscat.commands.datasource.DataVault", return_value=vault),
+            patch("oscat.commands.datasource.DatasourceRegistry"),
         ):
             result = await handle_connect_datasource(
                 console, session._scratchpads, session, prefill="hubspot-2"
@@ -1032,8 +1032,8 @@ class TestActiveDatasourceScoping:
         console = MagicMock()
 
         with (
-            patch("anton.commands.datasource.DataVault", return_value=vault),
-            patch("anton.commands.datasource.DatasourceRegistry"),
+            patch("oscat.commands.datasource.DataVault", return_value=vault),
+            patch("oscat.commands.datasource.DatasourceRegistry"),
         ):
             result = await handle_connect_datasource(
                 console, session._scratchpads, session, prefill="hubspot-2"
@@ -1051,7 +1051,7 @@ class TestActiveDatasourceScoping:
         vault.save("oracle", "1", {"host": "oracle.host"})
         vault.save("hubspot", "2", {"access_token": "pat-xxx"})
 
-        with patch("anton.utils.datasources.DataVault", return_value=vault):
+        with patch("oscat.utils.datasources.DataVault", return_value=vault):
             ctx = build_datasource_context()
 
         assert "oracle-1" in ctx
@@ -1063,7 +1063,7 @@ class TestActiveDatasourceScoping:
         vault.save("oracle", "1", {"host": "oracle.host"})
         vault.save("hubspot", "2", {"access_token": "pat-xxx"})
 
-        with patch("anton.utils.datasources.DataVault", return_value=vault):
+        with patch("oscat.utils.datasources.DataVault", return_value=vault):
             ctx = build_datasource_context(active_only="hubspot-2")
 
         assert "hubspot-2" in ctx
@@ -1074,7 +1074,7 @@ class TestActiveDatasourceScoping:
         vault = DataVault(vault_dir=vault_dir)
         vault.save("oracle", "1", {"host": "oracle.host"})
 
-        with patch("anton.utils.datasources.DataVault", return_value=vault):
+        with patch("oscat.utils.datasources.DataVault", return_value=vault):
             ctx = build_datasource_context(active_only="hubspot-99")
 
         assert "oracle-1" not in ctx
@@ -1085,7 +1085,7 @@ class TestActiveDatasourceScoping:
             "postgres", "prod_db", {"host": "pg.example.com", "password": "s3cr3t"}
         )
 
-        with patch("anton.utils.datasources.DataVault", return_value=vault):
+        with patch("oscat.utils.datasources.DataVault", return_value=vault):
             ctx = build_datasource_context()
 
         assert "DS_POSTGRES_PROD_DB__HOST" in ctx
@@ -1096,7 +1096,7 @@ class TestActiveDatasourceScoping:
         vault = DataVault(vault_dir=vault_dir)
         vault.save("postgres", "prod_db", {"host": "pg.example.com"})
 
-        with patch("anton.utils.datasources.DataVault", return_value=vault):
+        with patch("oscat.utils.datasources.DataVault", return_value=vault):
             ctx = build_datasource_context()
 
         assert "postgres-prod_db" in ctx
@@ -1108,7 +1108,7 @@ class TestActiveDatasourceScoping:
         vault.save("postgres", "prod_db", {"host": "pg.example.com"})
         vault.save("hubspot", "main", {"access_token": "pat-abc"})
 
-        with patch("anton.utils.datasources.DataVault", return_value=vault):
+        with patch("oscat.utils.datasources.DataVault", return_value=vault):
             ctx = build_datasource_context()
 
         assert "postgres-prod_db" in ctx
@@ -1136,7 +1136,7 @@ class TestCliCommandRegistration:
 class TestHandleListDataSources:
     def test_empty_vault_shows_message(self, vault_dir):
         console = MagicMock()
-        with patch("anton.commands.datasource.DataVault", return_value=DataVault(vault_dir=vault_dir)):
+        with patch("oscat.commands.datasource.DataVault", return_value=DataVault(vault_dir=vault_dir)):
             handle_list_data_sources(console)
         printed = " ".join(str(c) for c in console.print.call_args_list)
         assert "No data sources" in printed or "connect" in printed
@@ -1161,8 +1161,8 @@ class TestHandleListDataSources:
         rich_console = Console(file=buf, highlight=False, markup=False)
 
         with (
-            patch("anton.commands.datasource.DataVault", return_value=vault),
-            patch("anton.commands.datasource.DatasourceRegistry", return_value=registry),
+            patch("oscat.commands.datasource.DataVault", return_value=vault),
+            patch("oscat.commands.datasource.DatasourceRegistry", return_value=registry),
         ):
             handle_list_data_sources(rich_console)
 
@@ -1180,8 +1180,8 @@ class TestHandleListDataSources:
         rich_console = Console(file=buf, highlight=False, markup=False)
 
         with (
-            patch("anton.commands.datasource.DataVault", return_value=vault),
-            patch("anton.commands.datasource.DatasourceRegistry", return_value=registry),
+            patch("oscat.commands.datasource.DataVault", return_value=vault),
+            patch("oscat.commands.datasource.DatasourceRegistry", return_value=registry),
         ):
             handle_list_data_sources(rich_console)
 
@@ -1210,8 +1210,8 @@ class TestHandleTestDatasource:
         scratchpads.get_or_create = AsyncMock(return_value=pad)
 
         with (
-            patch("anton.commands.datasource.DataVault", return_value=vault),
-            patch("anton.commands.datasource.DatasourceRegistry", return_value=registry),
+            patch("oscat.commands.datasource.DataVault", return_value=vault),
+            patch("oscat.commands.datasource.DatasourceRegistry", return_value=registry),
         ):
             await handle_test_datasource(console, scratchpads, "postgresql-prod_db")
 
@@ -1238,8 +1238,8 @@ class TestHandleTestDatasource:
         scratchpads.get_or_create = AsyncMock(return_value=pad)
 
         with (
-            patch("anton.commands.datasource.DataVault", return_value=vault),
-            patch("anton.commands.datasource.DatasourceRegistry", return_value=registry),
+            patch("oscat.commands.datasource.DataVault", return_value=vault),
+            patch("oscat.commands.datasource.DatasourceRegistry", return_value=registry),
         ):
             await handle_test_datasource(console, scratchpads, "postgresql-prod_db")
 
@@ -1253,8 +1253,8 @@ class TestHandleTestDatasource:
         scratchpads = AsyncMock()
 
         with (
-            patch("anton.commands.datasource.DataVault", return_value=vault),
-            patch("anton.commands.datasource.DatasourceRegistry", return_value=registry),
+            patch("oscat.commands.datasource.DataVault", return_value=vault),
+            patch("oscat.commands.datasource.DatasourceRegistry", return_value=registry),
         ):
             await handle_test_datasource(console, scratchpads, "postgresql-ghost")
 
@@ -1267,8 +1267,8 @@ class TestHandleTestDatasource:
         scratchpads = AsyncMock()
 
         with (
-            patch("anton.commands.datasource.DataVault", return_value=DataVault(vault_dir=vault_dir)),
-            patch("anton.commands.datasource.DatasourceRegistry", return_value=registry),
+            patch("oscat.commands.datasource.DataVault", return_value=DataVault(vault_dir=vault_dir)),
+            patch("oscat.commands.datasource.DatasourceRegistry", return_value=registry),
         ):
             await handle_test_datasource(console, scratchpads, "")
 
@@ -1312,10 +1312,10 @@ class TestEditDatasourceFlow:
         )
 
         with (
-            patch("anton.commands.datasource.DataVault", return_value=vault),
-            patch("anton.commands.datasource.DatasourceRegistry", return_value=registry),
+            patch("oscat.commands.datasource.DataVault", return_value=vault),
+            patch("oscat.commands.datasource.DatasourceRegistry", return_value=registry),
             patch(
-                "anton.commands.datasource.prompt_or_cancel",
+                "oscat.commands.datasource.prompt_or_cancel",
                 new=AsyncMock(side_effect=lambda *a, **kw: next(prompt_values)),
             ),
         ):
@@ -1367,10 +1367,10 @@ class TestEditDatasourceFlow:
         )
 
         with (
-            patch("anton.commands.datasource.DataVault", return_value=vault),
-            patch("anton.commands.datasource.DatasourceRegistry", return_value=registry),
+            patch("oscat.commands.datasource.DataVault", return_value=vault),
+            patch("oscat.commands.datasource.DatasourceRegistry", return_value=registry),
             patch(
-                "anton.commands.datasource.prompt_or_cancel",
+                "oscat.commands.datasource.prompt_or_cancel",
                 new=AsyncMock(side_effect=lambda *a, **kw: next(prompt_values)),
             ),
         ):
@@ -1395,8 +1395,8 @@ class TestEditDatasourceFlow:
         console = MagicMock()
 
         with (
-            patch("anton.commands.datasource.DataVault", return_value=vault),
-            patch("anton.commands.datasource.DatasourceRegistry", return_value=registry),
+            patch("oscat.commands.datasource.DataVault", return_value=vault),
+            patch("oscat.commands.datasource.DatasourceRegistry", return_value=registry),
         ):
             result = await handle_connect_datasource(
                 console,
@@ -1417,9 +1417,9 @@ class TestRemoveDatasourceFlow:
         console = Console(quiet=True)
 
         with (
-            patch("anton.commands.datasource.DataVault", return_value=vault),
-            patch("anton.commands.datasource.DatasourceRegistry", return_value=registry),
-            patch("anton.commands.datasource.prompt_or_cancel", new=AsyncMock(return_value="y")),
+            patch("oscat.commands.datasource.DataVault", return_value=vault),
+            patch("oscat.commands.datasource.DatasourceRegistry", return_value=registry),
+            patch("oscat.commands.datasource.prompt_or_cancel", new=AsyncMock(return_value="y")),
         ):
             await handle_remove_data_source(console, "postgresql-prod_db")
 
@@ -1431,9 +1431,9 @@ class TestRemoveDatasourceFlow:
         console = Console(quiet=True)
 
         with (
-            patch("anton.commands.datasource.DataVault", return_value=vault),
-            patch("anton.commands.datasource.DatasourceRegistry", return_value=registry),
-            patch("anton.commands.datasource.prompt_or_cancel", new=AsyncMock(return_value="n")),
+            patch("oscat.commands.datasource.DataVault", return_value=vault),
+            patch("oscat.commands.datasource.DatasourceRegistry", return_value=registry),
+            patch("oscat.commands.datasource.prompt_or_cancel", new=AsyncMock(return_value="n")),
         ):
             await handle_remove_data_source(console, "postgresql-prod_db")
 
@@ -1445,8 +1445,8 @@ class TestRemoveDatasourceFlow:
         console = MagicMock()
 
         with (
-            patch("anton.commands.datasource.DataVault", return_value=vault),
-            patch("anton.commands.datasource.DatasourceRegistry", return_value=registry),
+            patch("oscat.commands.datasource.DataVault", return_value=vault),
+            patch("oscat.commands.datasource.DatasourceRegistry", return_value=registry),
         ):
             await handle_remove_data_source(console, "postgresql-ghost")
 
@@ -1458,7 +1458,7 @@ class TestRemoveDatasourceFlow:
         vault = DataVault(vault_dir=vault_dir)
         console = MagicMock()
 
-        with patch("anton.commands.datasource.DataVault", return_value=vault):
+        with patch("oscat.commands.datasource.DataVault", return_value=vault):
             await handle_remove_data_source(console, "nohyphen")
 
         printed = " ".join(str(c) for c in console.print.call_args_list)
@@ -1494,10 +1494,10 @@ class TestEnvActivationCollisionFree:
         )
 
         with (
-            patch("anton.commands.datasource.DataVault", return_value=vault),
-            patch("anton.commands.datasource.DatasourceRegistry", return_value=registry),
+            patch("oscat.commands.datasource.DataVault", return_value=vault),
+            patch("oscat.commands.datasource.DatasourceRegistry", return_value=registry),
             patch(
-                "anton.commands.datasource.prompt_or_cancel",
+                "oscat.commands.datasource.prompt_or_cancel",
                 new=AsyncMock(side_effect=lambda *a, **kw: next(responses)),
             ),
         ):
@@ -1539,8 +1539,8 @@ class TestEnvActivationCollisionFree:
         console = MagicMock()
 
         with (
-            patch("anton.commands.datasource.DataVault", return_value=vault),
-            patch("anton.commands.datasource.DatasourceRegistry", return_value=registry),
+            patch("oscat.commands.datasource.DataVault", return_value=vault),
+            patch("oscat.commands.datasource.DatasourceRegistry", return_value=registry),
         ):
             await handle_connect_datasource(
                 console,
@@ -1562,8 +1562,8 @@ class TestDatasourceSlashCommandBehavior:
         scratchpads = AsyncMock()
 
         with (
-            patch("anton.commands.datasource.DataVault", return_value=DataVault(vault_dir=vault_dir)),
-            patch("anton.commands.datasource.DatasourceRegistry", return_value=registry),
+            patch("oscat.commands.datasource.DataVault", return_value=DataVault(vault_dir=vault_dir)),
+            patch("oscat.commands.datasource.DatasourceRegistry", return_value=registry),
         ):
             await handle_test_datasource(console, scratchpads, "")
 
@@ -1579,9 +1579,9 @@ class TestDatasourceSlashCommandBehavior:
         console = MagicMock()
 
         with (
-            patch("anton.commands.datasource.DataVault", return_value=DataVault(vault_dir=vault_dir)),
-            patch("anton.commands.datasource.DatasourceRegistry", return_value=registry),
-            patch("anton.commands.datasource.prompt_or_cancel", return_value="UnknownEngine"),
+            patch("oscat.commands.datasource.DataVault", return_value=DataVault(vault_dir=vault_dir)),
+            patch("oscat.commands.datasource.DatasourceRegistry", return_value=registry),
+            patch("oscat.commands.datasource.prompt_or_cancel", return_value="UnknownEngine"),
         ):
             updated = await handle_connect_datasource(
                 console,
@@ -1688,7 +1688,7 @@ class TestTemporaryFlatExecution:
         assert os.environ.get("DS_HOST") == "analytics.example.com"
         assert "DS_POSTGRES_ANALYTICS__HOST" not in os.environ
 
-        with patch("anton.utils.datasources.DataVault", return_value=vault):
+        with patch("oscat.utils.datasources.DataVault", return_value=vault):
             restore_namespaced_env(vault)
 
         assert "DS_HOST" not in os.environ
@@ -1702,7 +1702,7 @@ class TestTemporaryFlatExecution:
 
         vault.inject_env("postgres", "prod_db", flat=True)
 
-        with patch("anton.utils.datasources.DataVault", return_value=vault):
+        with patch("oscat.utils.datasources.DataVault", return_value=vault):
             restore_namespaced_env(vault)
 
         assert "DS_HOST" not in os.environ
@@ -1746,8 +1746,8 @@ class TestTemporaryFlatExecution:
         scratchpads.get_or_create = AsyncMock(return_value=pad)
 
         with (
-            patch("anton.commands.datasource.DataVault", return_value=vault),
-            patch("anton.commands.datasource.DatasourceRegistry", return_value=registry),
+            patch("oscat.commands.datasource.DataVault", return_value=vault),
+            patch("oscat.commands.datasource.DatasourceRegistry", return_value=registry),
         ):
             await handle_test_datasource(
                 MagicMock(), scratchpads, "postgresql-prod_db"
@@ -1782,7 +1782,7 @@ class TestStaleDsRegistrationState:
         )
 
         with patch(
-            "anton.utils.datasources.DatasourceRegistry", return_value=registry
+            "oscat.utils.datasources.DatasourceRegistry", return_value=registry
         ):
             restore_namespaced_env(vault)
 
@@ -1792,7 +1792,7 @@ class TestStaleDsRegistrationState:
         vault.delete("postgresql", "prod_db")
 
         with patch(
-            "anton.utils.datasources.DatasourceRegistry", return_value=registry
+            "oscat.utils.datasources.DatasourceRegistry", return_value=registry
         ):
             restore_namespaced_env(vault)
 
@@ -1815,7 +1815,7 @@ class TestStaleDsRegistrationState:
         )
 
         with patch(
-            "anton.utils.datasources.DatasourceRegistry", return_value=registry
+            "oscat.utils.datasources.DatasourceRegistry", return_value=registry
         ):
             restore_namespaced_env(vault)
 
@@ -1837,7 +1837,7 @@ class TestStaleDsRegistrationState:
         )
 
         with patch(
-            "anton.utils.datasources.DatasourceRegistry", return_value=registry
+            "oscat.utils.datasources.DatasourceRegistry", return_value=registry
         ):
             restore_namespaced_env(vault)
 
@@ -1861,7 +1861,7 @@ class TestStaleDsRegistrationState:
         )
 
         with patch(
-            "anton.utils.datasources.DatasourceRegistry", return_value=registry
+            "oscat.utils.datasources.DatasourceRegistry", return_value=registry
         ):
             restore_namespaced_env(vault)
 
@@ -1869,7 +1869,7 @@ class TestStaleDsRegistrationState:
         known_after_first = len(_DS_KNOWN_VARS)
 
         with patch(
-            "anton.utils.datasources.DatasourceRegistry", return_value=registry
+            "oscat.utils.datasources.DatasourceRegistry", return_value=registry
         ):
             restore_namespaced_env(vault)
 
@@ -1932,10 +1932,10 @@ class TestAddCustomDatasourceFlow:
 
         with (
             patch(
-                "anton.commands.datasource.prompt_or_cancel",
+                "oscat.commands.datasource.prompt_or_cancel",
                 new=AsyncMock(side_effect=lambda *a, **kw: next(responses)),
             ),
-            patch("anton.commands.datasource.Path") as mock_path_cls,
+            patch("oscat.commands.datasource.Path") as mock_path_cls,
         ):
             self._mock_ds_path(mock_path_cls, tmp_path)
             result = await handle_add_custom_datasource(
@@ -1972,10 +1972,10 @@ class TestAddCustomDatasourceFlow:
 
         with (
             patch(
-                "anton.commands.datasource.prompt_or_cancel",
+                "oscat.commands.datasource.prompt_or_cancel",
                 new=AsyncMock(side_effect=lambda *a, **kw: next(responses)),
             ),
-            patch("anton.commands.datasource.Path") as mock_path_cls,
+            patch("oscat.commands.datasource.Path") as mock_path_cls,
         ):
             self._mock_ds_path(mock_path_cls, tmp_path)
             result = await handle_add_custom_datasource(
@@ -2017,10 +2017,10 @@ class TestAddCustomDatasourceFlow:
 
         with (
             patch(
-                "anton.commands.datasource.prompt_or_cancel",
+                "oscat.commands.datasource.prompt_or_cancel",
                 new=AsyncMock(side_effect=lambda *a, **kw: next(responses)),
             ),
-            patch("anton.commands.datasource.Path") as mock_path_cls,
+            patch("oscat.commands.datasource.Path") as mock_path_cls,
         ):
             self._mock_ds_path(mock_path_cls, tmp_path)
             result = await handle_add_custom_datasource(
@@ -2105,16 +2105,16 @@ class TestCustomDatasourceConnectFlow:
         )
 
         with (
-            patch("anton.commands.datasource.DataVault", return_value=vault),
+            patch("oscat.commands.datasource.DataVault", return_value=vault),
             patch(
-                "anton.commands.datasource.DatasourceRegistry",
+                "oscat.commands.datasource.DatasourceRegistry",
                 return_value=self._make_registry(tmp_path),
             ),
             patch(
-                "anton.commands.datasource.prompt_or_cancel",
+                "oscat.commands.datasource.prompt_or_cancel",
                 new=AsyncMock(side_effect=lambda *a, **kw: next(responses)),
             ),
-            patch("anton.commands.datasource.Path") as mock_path_cls,
+            patch("oscat.commands.datasource.Path") as mock_path_cls,
         ):
             self._mock_ds_path(mock_path_cls, tmp_path)
             result = await handle_connect_datasource(
@@ -2161,16 +2161,16 @@ class TestCustomDatasourceConnectFlow:
         )
 
         with (
-            patch("anton.commands.datasource.DataVault", return_value=vault),
+            patch("oscat.commands.datasource.DataVault", return_value=vault),
             patch(
-                "anton.commands.datasource.DatasourceRegistry",
+                "oscat.commands.datasource.DatasourceRegistry",
                 return_value=self._make_registry(tmp_path),
             ),
             patch(
-                "anton.commands.datasource.prompt_or_cancel",
+                "oscat.commands.datasource.prompt_or_cancel",
                 new=AsyncMock(side_effect=lambda *a, **kw: next(responses)),
             ),
-            patch("anton.commands.datasource.Path") as mock_path_cls,
+            patch("oscat.commands.datasource.Path") as mock_path_cls,
         ):
             self._mock_ds_path(mock_path_cls, tmp_path)
             result = await handle_connect_datasource(
@@ -2222,16 +2222,16 @@ class TestCustomDatasourceConnectFlow:
         )
 
         with (
-            patch("anton.commands.datasource.DataVault", return_value=vault),
+            patch("oscat.commands.datasource.DataVault", return_value=vault),
             patch(
-                "anton.commands.datasource.DatasourceRegistry",
+                "oscat.commands.datasource.DatasourceRegistry",
                 return_value=self._make_registry(tmp_path),
             ),
             patch(
-                "anton.commands.datasource.prompt_or_cancel",
+                "oscat.commands.datasource.prompt_or_cancel",
                 new=AsyncMock(side_effect=lambda *a, **kw: next(responses)),
             ),
-            patch("anton.commands.datasource.Path") as mock_path_cls,
+            patch("oscat.commands.datasource.Path") as mock_path_cls,
         ):
             self._mock_ds_path(mock_path_cls, tmp_path)
             result = await handle_connect_datasource(
@@ -2274,16 +2274,16 @@ class TestCustomDatasourceConnectFlow:
         responses = iter(["0", "My API Service", "I have an API key", "n", "my_key"])
 
         with (
-            patch("anton.commands.datasource.DataVault", return_value=vault),
+            patch("oscat.commands.datasource.DataVault", return_value=vault),
             patch(
-                "anton.commands.datasource.DatasourceRegistry",
+                "oscat.commands.datasource.DatasourceRegistry",
                 return_value=self._make_registry(tmp_path),
             ),
             patch(
-                "anton.commands.datasource.prompt_or_cancel",
+                "oscat.commands.datasource.prompt_or_cancel",
                 new=AsyncMock(side_effect=lambda *a, **kw: next(responses)),
             ),
-            patch("anton.commands.datasource.Path") as mock_path_cls,
+            patch("oscat.commands.datasource.Path") as mock_path_cls,
         ):
             self._mock_ds_path(mock_path_cls, tmp_path)
             await handle_connect_datasource(console, session._scratchpads, session)
@@ -2325,10 +2325,10 @@ class TestEditDatasourceWithTestSnippet:
         )  # field values, then retry?
 
         with (
-            patch("anton.commands.datasource.DataVault", return_value=vault),
-            patch("anton.commands.datasource.DatasourceRegistry", return_value=registry),
+            patch("oscat.commands.datasource.DataVault", return_value=vault),
+            patch("oscat.commands.datasource.DatasourceRegistry", return_value=registry),
             patch(
-                "anton.commands.datasource.prompt_or_cancel",
+                "oscat.commands.datasource.prompt_or_cancel",
                 new=AsyncMock(side_effect=lambda *a, **kw: next(responses)),
             ),
         ):
@@ -2369,10 +2369,10 @@ class TestEditDatasourceWithTestSnippet:
         )
 
         with (
-            patch("anton.commands.datasource.DataVault", return_value=vault),
-            patch("anton.commands.datasource.DatasourceRegistry", return_value=registry),
+            patch("oscat.commands.datasource.DataVault", return_value=vault),
+            patch("oscat.commands.datasource.DatasourceRegistry", return_value=registry),
             patch(
-                "anton.commands.datasource.prompt_or_cancel",
+                "oscat.commands.datasource.prompt_or_cancel",
                 new=AsyncMock(side_effect=lambda *a, **kw: next(prompt_responses)),
             ),
         ):
@@ -2421,9 +2421,9 @@ class TestEditDatasourceWithTestSnippet:
         }
 
         with (
-            patch("anton.commands.datasource.DataVault", return_value=vault),
-            patch("anton.commands.datasource.DatasourceRegistry", return_value=registry),
-            patch("anton.commands.datasource.prompt_or_cancel", new=AsyncMock(return_value="n")),
+            patch("oscat.commands.datasource.DataVault", return_value=vault),
+            patch("oscat.commands.datasource.DatasourceRegistry", return_value=registry),
+            patch("oscat.commands.datasource.prompt_or_cancel", new=AsyncMock(return_value="n")),
         ):
             result = await run_connection_test(
                 console,
@@ -2452,9 +2452,9 @@ class TestPromptCopyConsistency:
         vault = DataVault(vault_dir=vault_dir)
 
         with (
-            patch("anton.commands.datasource.DataVault", return_value=vault),
-            patch("anton.commands.datasource.DatasourceRegistry", return_value=registry),
-            patch("anton.commands.datasource.prompt_or_cancel", new=AsyncMock(return_value=None)),
+            patch("oscat.commands.datasource.DataVault", return_value=vault),
+            patch("oscat.commands.datasource.DatasourceRegistry", return_value=registry),
+            patch("oscat.commands.datasource.prompt_or_cancel", new=AsyncMock(return_value=None)),
         ):
             result = await handle_connect_datasource(
                 console, session._scratchpads, session
@@ -2476,9 +2476,9 @@ class TestPromptCopyConsistency:
         session._scratchpads.get_or_create = AsyncMock(return_value=pad)
 
         with (
-            patch("anton.commands.datasource.DataVault", return_value=vault),
-            patch("anton.commands.datasource.DatasourceRegistry", return_value=registry),
-            patch("anton.commands.datasource.prompt_or_cancel", new=AsyncMock(return_value=None)),
+            patch("oscat.commands.datasource.DataVault", return_value=vault),
+            patch("oscat.commands.datasource.DatasourceRegistry", return_value=registry),
+            patch("oscat.commands.datasource.prompt_or_cancel", new=AsyncMock(return_value=None)),
         ):
             engine_def = registry.get("postgresql")
             credentials = {
@@ -2512,10 +2512,10 @@ class TestPromptCopyConsistency:
         poc_calls = iter(["PostgreSQL", None])  # engine selected, then Esc
 
         with (
-            patch("anton.commands.datasource.DataVault", return_value=vault),
-            patch("anton.commands.datasource.DatasourceRegistry", return_value=registry),
+            patch("oscat.commands.datasource.DataVault", return_value=vault),
+            patch("oscat.commands.datasource.DatasourceRegistry", return_value=registry),
             patch(
-                "anton.commands.datasource.prompt_or_cancel",
+                "oscat.commands.datasource.prompt_or_cancel",
                 new=AsyncMock(side_effect=lambda *a, **kw: next(poc_calls)),
             ),
         ):
@@ -2542,9 +2542,9 @@ class TestPromptCopyConsistency:
             return None  # Esc on every prompt to bail out
 
         with (
-            patch("anton.commands.datasource.DataVault", return_value=vault),
-            patch("anton.commands.datasource.DatasourceRegistry", return_value=registry),
-            patch("anton.commands.datasource.prompt_or_cancel", new=AsyncMock(side_effect=_capture)),
+            patch("oscat.commands.datasource.DataVault", return_value=vault),
+            patch("oscat.commands.datasource.DatasourceRegistry", return_value=registry),
+            patch("oscat.commands.datasource.prompt_or_cancel", new=AsyncMock(side_effect=_capture)),
         ):
             # "PostgreeSQL" triggers fuzzy match against "PostgreSQL"
             await handle_connect_datasource(
@@ -2567,10 +2567,10 @@ class TestPromptCopyConsistency:
         [
             "(y/n)",
             "(reconnect/cancel)",
-            "(anton) Would you like to re-enter your credentials? (y/n)",
-            "(anton) Use this datasource? (y/n)",
-            "(anton) Do you have these available? (y/n/<list params>)",
-            "(anton) (reconnect/cancel)",
+            "(oscat) Would you like to re-enter your credentials? (y/n)",
+            "(oscat) Use this datasource? (y/n)",
+            "(oscat) Do you have these available? (y/n/<list params>)",
+            "(oscat) (reconnect/cancel)",
         ],
     )
     def test_canonical_labels_no_bracket_style(self, label):

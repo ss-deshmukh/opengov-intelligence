@@ -1,6 +1,6 @@
 #!/bin/sh
-# Anton install script
-# curl -sSf https://raw.githubusercontent.com/mindsdb/anton/main/install.sh | sh && export PATH="$HOME/.local/bin:$PATH" && anton
+# OSCAT install script
+# curl -sSf https://raw.githubusercontent.com/mindsdb/anton/main/install.sh | sh && export PATH="$HOME/.local/bin:$PATH" && oscat
 # Pure POSIX sh, no sudo, idempotent.
 # Pass --force to skip confirmation prompts.
 
@@ -46,8 +46,8 @@ confirm() {
 
 # ── 1. Branded logo ────────────────────────────────────────────────
 info ""
-info "${CYAN} ▄▀█ █▄ █ ▀█▀ █▀█ █▄ █${RESET}"
-info "${CYAN} █▀█ █ ▀█  █  █▄█ █ ▀█${RESET}"
+info "${CYAN} █▀█ █▀▀ █▀▀ ▄▀█ ▀█▀${RESET}"
+info "${CYAN} █▄█ ▄▄█ █▄▄ █▀█  █ ${RESET}"
 info "${CYAN} autonomous coworker${RESET}"
 info ""
 
@@ -85,7 +85,7 @@ else
 fi
 
 if [ "$NEED_UV" -eq 1 ]; then
-    warn "uv is not installed. It is required to manage anton's isolated environment."
+    warn "uv is not installed. It is required to manage OSCAT's isolated environment."
     info "  uv will be installed to ~/.local/bin via https://astral.sh/uv/install.sh"
     if confirm "Install uv?"; then
         info "  Installing uv..."
@@ -103,31 +103,31 @@ if [ "$NEED_UV" -eq 1 ]; then
     fi
 fi
 
-# ── 4. Install anton via uv tool ───────────────────────────────────
+# ── 4. Install oscat via uv tool ───────────────────────────────────
 info ""
 info "  This will install:"
-info "    - ${BOLD}anton${RESET} (from ${REPO_URL})"
+info "    - ${BOLD}oscat${RESET} (from ${REPO_URL})"
 info "    - Into an isolated virtual environment managed by uv"
 info "    - Python 3.11+ will be downloaded automatically if not present"
 info ""
 
 if confirm "Proceed with installation?"; then
-    info "  Installing anton into an isolated venv..."
+    info "  Installing OSCAT into an isolated venv..."
     uv tool install "$REPO_URL" --force
-    info "  Installed anton"
+    info "  Installed OSCAT"
 else
     info "  Installation cancelled."
     exit 0
 fi
 
 # ── 5. Verify the venv was created ─────────────────────────────────
-UV_TOOL_DIR="${XDG_DATA_HOME:-$HOME/.local/share}/uv/tools/anton"
+UV_TOOL_DIR="${XDG_DATA_HOME:-$HOME/.local/share}/uv/tools/oscat"
 if [ -d "$UV_TOOL_DIR" ]; then
     info "  Venv: ${UV_TOOL_DIR}"
 else
-    warn "Could not verify anton's virtual environment."
+    warn "Could not verify OSCAT's virtual environment."
     info "  Expected at: ${UV_TOOL_DIR}"
-    info "  Anton may still work — uv manages the environment internally."
+    info "  OSCAT may still work — uv manages the environment internally."
 fi
 
 # ── 6. Ensure ~/.local/bin is in PATH ──────────────────────────────
@@ -159,9 +159,9 @@ ensure_path() {
 
     if [ "$SHELL_NAME" = "fish" ]; then
         mkdir -p "$(dirname "$SHELL_RC")"
-        printf '\n# Added by anton installer\nfish_add_path %s\n' "$LOCAL_BIN" >> "$SHELL_RC"
+        printf '\n# Added by OSCAT installer\nfish_add_path %s\n' "$LOCAL_BIN" >> "$SHELL_RC"
     else
-        printf '\n# Added by anton installer\nexport PATH="$HOME/.local/bin:$PATH"\n' >> "$SHELL_RC"
+        printf '\n# Added by OSCAT installer\nexport PATH="$HOME/.local/bin:$PATH"\n' >> "$SHELL_RC"
     fi
     info "  Updated ${SHELL_RC}"
 }
@@ -173,7 +173,7 @@ ensure_path
 # Catches broken Python symlinks, missing venv module, etc. before the user hits it.
 info ""
 info "  Running scratchpad health check..."
-HEALTH_DIR=$(mktemp -d "${TMPDIR:-/tmp}/anton_healthcheck_XXXXXX")
+HEALTH_DIR=$(mktemp -d "${TMPDIR:-/tmp}/oscat_healthcheck_XXXXXX")
 if uv venv "$HEALTH_DIR/venv" --system-site-packages --seed --quiet 2>/dev/null; then
     HEALTH_PYTHON="$HEALTH_DIR/venv/bin/python"
     if [ -f "$HEALTH_PYTHON" ] && "$HEALTH_PYTHON" -c "print('ok')" >/dev/null 2>&1; then
@@ -192,10 +192,10 @@ rm -rf "$HEALTH_DIR" 2>/dev/null
 
 # ── 8. Success message ──────────────────────────────────────────────
 info ""
-info "${GREEN}  ✓ anton installed successfully!${RESET}"
+info "${GREEN}  ✓ OSCAT installed successfully!${RESET}"
 info ""
-info "  Upgrade:    uv tool upgrade anton"
-info "  Uninstall:  uv tool uninstall anton"
+info "  Upgrade:    uv tool upgrade oscat"
+info "  Uninstall:  uv tool uninstall oscat"
 info ""
-info "  Config: ~/.anton/.env"
+info "  Config: ~/.oscat/.env"
 info ""

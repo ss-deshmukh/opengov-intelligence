@@ -4,7 +4,7 @@ from unittest.mock import patch
 
 from rich.theme import Theme
 
-from anton.channel.theme import (
+from oscat.channel.theme import (
     DARK_PALETTE,
     LIGHT_PALETTE,
     build_rich_theme,
@@ -14,24 +14,24 @@ from anton.channel.theme import (
 
 
 class TestDetectColorMode:
-    def test_anton_theme_env_dark(self):
-        with patch.dict("os.environ", {"ANTON_THEME": "dark"}, clear=False):
+    def test_oscat_theme_env_dark(self):
+        with patch.dict("os.environ", {"OSCAT_THEME": "dark"}, clear=False):
             assert detect_color_mode() == "dark"
 
-    def test_anton_theme_env_light(self):
-        with patch.dict("os.environ", {"ANTON_THEME": "light"}, clear=False):
+    def test_oscat_theme_env_light(self):
+        with patch.dict("os.environ", {"OSCAT_THEME": "light"}, clear=False):
             assert detect_color_mode() == "light"
 
-    def test_anton_theme_env_case_insensitive(self):
-        with patch.dict("os.environ", {"ANTON_THEME": "LIGHT"}, clear=False):
+    def test_oscat_theme_env_case_insensitive(self):
+        with patch.dict("os.environ", {"OSCAT_THEME": "LIGHT"}, clear=False):
             assert detect_color_mode() == "light"
 
     def test_default_is_dark(self):
-        with patch.dict("os.environ", {"ANTON_THEME": ""}, clear=False):
+        with patch.dict("os.environ", {"OSCAT_THEME": ""}, clear=False):
             assert detect_color_mode() == "dark"
 
     def test_unrecognised_value_falls_back_to_dark(self):
-        with patch.dict("os.environ", {"ANTON_THEME": "solarized"}, clear=False):
+        with patch.dict("os.environ", {"OSCAT_THEME": "solarized"}, clear=False):
             assert detect_color_mode() == "dark"
 
 
@@ -54,9 +54,9 @@ class TestBuildRichTheme:
         theme = build_rich_theme("dark")
         assert isinstance(theme, Theme)
 
-    def test_theme_has_anton_keys(self):
+    def test_theme_has_oscat_keys(self):
         theme = build_rich_theme("dark")
-        assert "anton.cyan" in theme.styles
-        assert "anton.glow" in theme.styles
+        assert "oscat.cyan" in theme.styles
+        assert "oscat.glow" in theme.styles
         assert "phase.planning" in theme.styles
         assert "phase.executing" in theme.styles

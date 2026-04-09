@@ -5,15 +5,15 @@ from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
 
-from anton.config.settings import AntonSettings
-from anton.llm.client import LLMClient
-from anton.llm.openai import (
+from oscat.config.settings import OscatSettings
+from oscat.llm.client import LLMClient
+from oscat.llm.openai import (
     OpenAIProvider,
     build_chat_completion_kwargs,
     _translate_messages,
     _translate_tools,
 )
-from anton.llm.provider import LLMProvider
+from oscat.llm.provider import LLMProvider
 
 
 def _make_mock_response(*, content="Hello", tool_calls=None, prompt_tokens=10, completion_tokens=20, finish_reason="stop"):
@@ -38,7 +38,7 @@ def _make_mock_response(*, content="Hello", tool_calls=None, prompt_tokens=10, c
 
 class TestOpenAIProvider:
     async def test_complete_text_response(self):
-        with patch("anton.llm.openai.openai") as mock_openai:
+        with patch("oscat.llm.openai.openai") as mock_openai:
             mock_client = AsyncMock()
             mock_openai.AsyncOpenAI.return_value = mock_client
 
@@ -60,7 +60,7 @@ class TestOpenAIProvider:
             assert result.stop_reason == "stop"
 
     async def test_complete_tool_use_response(self):
-        with patch("anton.llm.openai.openai") as mock_openai:
+        with patch("oscat.llm.openai.openai") as mock_openai:
             mock_client = AsyncMock()
             mock_openai.AsyncOpenAI.return_value = mock_client
 
@@ -88,7 +88,7 @@ class TestOpenAIProvider:
             assert result.stop_reason == "tool_calls"
 
     async def test_complete_passes_tool_choice(self):
-        with patch("anton.llm.openai.openai") as mock_openai:
+        with patch("oscat.llm.openai.openai") as mock_openai:
             mock_client = AsyncMock()
             mock_openai.AsyncOpenAI.return_value = mock_client
 
@@ -223,8 +223,8 @@ class TestTranslateMessages:
 
 class TestFromSettingsOpenAI:
     def test_from_settings_openai(self):
-        with patch("anton.llm.openai.openai"):
-            settings = AntonSettings(
+        with patch("oscat.llm.openai.openai"):
+            settings = OscatSettings(
                 planning_provider="openai",
                 coding_provider="openai",
                 planning_model="gpt-4.1",

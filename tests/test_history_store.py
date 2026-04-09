@@ -1,4 +1,4 @@
-"""Tests for anton.memory.history_store.HistoryStore."""
+"""Tests for oscat.memory.history_store.HistoryStore."""
 
 from __future__ import annotations
 
@@ -7,7 +7,7 @@ from pathlib import Path
 
 import pytest
 
-from anton.memory.history_store import HistoryStore
+from oscat.memory.history_store import HistoryStore
 
 
 @pytest.fixture
@@ -178,8 +178,8 @@ def test_save_never_raises(tmp_path: Path) -> None:
 class TestWorkspaceIsolation:
     def test_sessions_isolated_across_workspaces(self, tmp_path: Path) -> None:
         """Sessions saved in workspace A must not appear in workspace B's history."""
-        store_a = HistoryStore(tmp_path / "project_a" / ".anton" / "episodes")
-        store_b = HistoryStore(tmp_path / "project_b" / ".anton" / "episodes")
+        store_a = HistoryStore(tmp_path / "project_a" / ".oscat" / "episodes")
+        store_b = HistoryStore(tmp_path / "project_b" / ".oscat" / "episodes")
 
         store_a.save("20260330_120000", [{"role": "user", "content": "project A session"}])
 

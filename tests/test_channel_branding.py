@@ -6,8 +6,8 @@ from unittest.mock import MagicMock, patch
 
 from rich.console import Console
 
-from anton.channel.branding import TAGLINES, pick_tagline
-from anton.channel.theme import build_rich_theme
+from oscat.channel.branding import TAGLINES, pick_tagline
+from oscat.channel.theme import build_rich_theme
 
 
 def _strip_ansi(text: str) -> str:
@@ -36,16 +36,16 @@ class TestTaglines:
 
 class TestRenderBanner:
     def test_banner_contains_version(self):
-        from anton.channel.branding import render_banner
+        from oscat.channel.branding import render_banner
 
         console = _make_console()
         render_banner(console)
         output = _strip_ansi(console.file.getvalue())
-        from anton import __version__
+        from oscat import __version__
         assert f"v{__version__}" in output
 
     def test_banner_contains_robot(self):
-        from anton.channel.branding import render_banner
+        from oscat.channel.branding import render_banner
 
         console = _make_console()
         render_banner(console)
@@ -53,7 +53,7 @@ class TestRenderBanner:
         assert "(\u00b0\u1d17\u00b0)" in output  # robot face
 
     def test_banner_contains_block_name(self):
-        from anton.channel.branding import render_banner
+        from oscat.channel.branding import render_banner
 
         console = _make_console()
         render_banner(console)
@@ -64,13 +64,13 @@ class TestRenderBanner:
 
 class TestRenderDashboard:
     def test_dashboard_contains_commands(self):
-        from anton.channel.branding import render_dashboard
+        from oscat.channel.branding import render_dashboard
 
         mock_settings = MagicMock()
         mock_settings.memory_enabled = False
         mock_settings.coding_model = "claude-opus-4-6"
 
-        with patch("anton.config.settings.AntonSettings", return_value=mock_settings):
+        with patch("oscat.config.settings.OscatSettings", return_value=mock_settings):
             console = _make_console()
             render_dashboard(console)
             output = _strip_ansi(console.file.getvalue())

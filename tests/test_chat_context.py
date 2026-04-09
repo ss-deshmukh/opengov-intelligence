@@ -8,15 +8,15 @@ from unittest.mock import AsyncMock, MagicMock
 
 import pytest
 
-from anton.chat import ChatSession, _handle_connect
-from anton.minds_client import describe_minds_connection_error
-from anton.config.settings import AntonSettings
-from anton.tools import MEMORIZE_TOOL
-from anton.context.self_awareness import SelfAwarenessContext
-from anton.llm.provider import LLMResponse, ToolCall, Usage
-from anton.workspace import Workspace
-from anton.memory.cortex import Cortex
-from anton.memory.hippocampus import Hippocampus
+from oscat.chat import ChatSession, _handle_connect
+from oscat.minds_client import describe_minds_connection_error
+from oscat.config.settings import OscatSettings
+from oscat.tools import MEMORIZE_TOOL
+from oscat.context.self_awareness import SelfAwarenessContext
+from oscat.llm.provider import LLMResponse, ToolCall, Usage
+from oscat.workspace import Workspace
+from oscat.memory.cortex import Cortex
+from oscat.memory.hippocampus import Hippocampus
 
 
 def _text_response(text: str) -> LLMResponse:
@@ -206,10 +206,10 @@ class TestMemorizeTool:
         assert "Memory updated" in result_content
 
 
-class TestAntonMdInjection:
-    async def test_anton_md_injected_into_system_prompt(self, ws, cortex):
-        """anton.md content is injected into the system prompt."""
-        ws.anton_md_path.write_text("This project uses Django and PostgreSQL")
+class TestOscatMdInjection:
+    async def test_oscat_md_injected_into_system_prompt(self, ws, cortex):
+        """oscat.md content is injected into the system prompt."""
+        ws.oscat_md_path.write_text("This project uses Django and PostgreSQL")
 
         mock_llm = AsyncMock()
         mock_llm.plan = AsyncMock(return_value=_text_response("Hello!"))
@@ -226,9 +226,9 @@ class TestAntonMdInjection:
         assert "Project Context" in system_prompt
         assert "Django and PostgreSQL" in system_prompt
 
-    async def test_empty_anton_md_no_section(self, ws, cortex):
-        """Empty anton.md doesn't add a section to the prompt."""
-        ws.anton_md_path.write_text("")
+    async def test_empty_oscat_md_no_section(self, ws, cortex):
+        """Empty oscat.md doesn't add a section to the prompt."""
+        ws.oscat_md_path.write_text("")
 
         mock_llm = AsyncMock()
         mock_llm.plan = AsyncMock(return_value=_text_response("Hello!"))
@@ -328,8 +328,8 @@ class TestMindsSetupRecovery:
         async def fake_prompt(*args, **kwargs):
             return next(prompts)
 
-        monkeypatch.setattr("anton.chat.prompt_or_cancel", fake_prompt)
-        monkeypatch.setattr("anton.utils.prompt.prompt_or_cancel", fake_prompt)
+        monkeypatch.setattr("oscat.chat.prompt_or_cancel", fake_prompt)
+        monkeypatch.setattr("oscat.utils.prompt.prompt_or_cancel", fake_prompt)
 
         calls: list[tuple[str, str, bool]] = []
 
@@ -345,16 +345,16 @@ class TestMindsSetupRecovery:
                 )
             return [{"name": "warehouse", "datasources": []}]
 
-        monkeypatch.setattr("anton.chat.list_minds", fake_list_minds)
-        monkeypatch.setattr("anton.chat.test_llm", lambda *args, **kwargs: True)
+        monkeypatch.setattr("oscat.chat.list_minds", fake_list_minds)
+        monkeypatch.setattr("oscat.chat.test_llm", lambda *args, **kwargs: True)
         rebuilt = object()
-        monkeypatch.setattr("anton.chat.rebuild_session", lambda **kwargs: rebuilt)
+        monkeypatch.setattr("oscat.chat.rebuild_session", lambda **kwargs: rebuilt)
 
         workspace_base = tmp_path / "workspace"
         workspace_base.mkdir()
         workspace = Workspace(workspace_base)
         workspace.initialize()
-        settings = AntonSettings(minds_api_key="old-key", _env_file=None)
+        settings = OscatSettings(minds_api_key="old-key", _env_file=None)
         console = MagicMock()
 
         result = await _handle_connect(
@@ -373,7 +373,7 @@ class TestMindsSetupRecovery:
             ("https://mdb.ai", "new-key", True),
         ]
         assert settings.minds_api_key == "new-key"
-        assert "ANTON_MINDS_API_KEY=new-key" in (home / ".anton" / ".env").read_text()
+        assert "OSCAT_MINDS_API_KEY=new-key" in (home / ".oscat" / ".env").read_text()
         printed = "\n".join(str(call.args[0]) for call in console.print.call_args_list if call.args)
         assert "The server rejected the request." in printed
         assert "Common reasons: invalid or expired credentials" in printed
@@ -394,8 +394,8 @@ class TestMindsSetupRecovery:
         async def fake_prompt(*args, **kwargs):
             return next(prompts)
 
-        monkeypatch.setattr("anton.chat.prompt_or_cancel", fake_prompt)
-        monkeypatch.setattr("anton.utils.prompt.prompt_or_cancel", fake_prompt)
+        monkeypatch.setattr("oscat.chat.prompt_or_cancel", fake_prompt)
+        monkeypatch.setattr("oscat.utils.prompt.prompt_or_cancel", fake_prompt)
 
         calls: list[tuple[str, str, bool]] = []
 
@@ -405,16 +405,16 @@ class TestMindsSetupRecovery:
                 raise urllib.error.URLError(socket.timeout("timed out"))
             return [{"name": "warehouse", "datasources": []}]
 
-        monkeypatch.setattr("anton.chat.list_minds", fake_list_minds)
-        monkeypatch.setattr("anton.chat.test_llm", lambda *args, **kwargs: True)
+        monkeypatch.setattr("oscat.chat.list_minds", fake_list_minds)
+        monkeypatch.setattr("oscat.chat.test_llm", lambda *args, **kwargs: True)
         rebuilt = object()
-        monkeypatch.setattr("anton.chat.rebuild_session", lambda **kwargs: rebuilt)
+        monkeypatch.setattr("oscat.chat.rebuild_session", lambda **kwargs: rebuilt)
 
         workspace_base = tmp_path / "workspace"
         workspace_base.mkdir()
         workspace = Workspace(workspace_base)
         workspace.initialize()
-        settings = AntonSettings(minds_api_key="minds-key", _env_file=None)
+        settings = OscatSettings(minds_api_key="minds-key", _env_file=None)
         console = MagicMock()
 
         result = await _handle_connect(
@@ -433,7 +433,7 @@ class TestMindsSetupRecovery:
             ("https://terabase.dev.mdb.ai", "minds-key", False),
         ]
         assert settings.minds_ssl_verify is False
-        assert "ANTON_MINDS_SSL_VERIFY=false" in (home / ".anton" / ".env").read_text()
+        assert "OSCAT_MINDS_SSL_VERIFY=false" in (home / ".oscat" / ".env").read_text()
         printed = "\n".join(str(call.args[0]) for call in console.print.call_args_list if call.args)
         assert "Connection failed because the request timed out." in printed
         assert "server is slow or unavailable" in printed

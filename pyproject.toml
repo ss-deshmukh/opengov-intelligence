@@ -3,9 +3,9 @@ requires = ["hatchling"]
 build-backend = "hatchling.build"
 
 [project]
-name = "anton"
+name = "oscat"
 dynamic = ["version"]
-description = "Autonomous coding copilot"
+description = "OSCAT - OpenShore Custom Analytics Tool"
 requires-python = ">=3.11"
 dependencies = [
     "anthropic>=0.42.0",
@@ -29,11 +29,11 @@ clipboard = [
 ]
 
 [project.scripts]
-anton = "anton.cli:app"
+oscat = "oscat.cli:app"
 
 [tool.hatch.version]
 source = "regex"
-path = "anton/__init__.py"
+path = "oscat/__init__.py"
 
 [tool.pytest.ini_options]
 asyncio_mode = "auto"
